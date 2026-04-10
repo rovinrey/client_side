@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../api/config';
 
@@ -19,7 +19,6 @@ const BeneficiaryManagement = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("All");
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
     useEffect(() => {
         fetchBeneficiaries();

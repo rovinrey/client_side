@@ -60,7 +60,7 @@ function TupadForm() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
 
-        setFormData((prev) => {
+        setFormData((prev: typeof INITIAL_FORM_STATE) => {
             const updated = {
                 ...prev,
                 [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,

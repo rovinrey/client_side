@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../../api/config';
 import WelcomeBanner from "../../components/Welcomebanner";
 import RequirementsSubmissionModule from "../../components/RequirementsSubmissionModule";
 import { getNotifications, markNotificationAsRead, type Notification } from '../../api/notifications.api';
-import { BENEFICIARY_SELECTED_PROGRAM_KEY, type ProgramKey } from '../../constants/beneficiaryPrograms';
+import { type ProgramKey } from '../../constants/beneficiaryPrograms';
 
 const PROGRAM_NAME_TO_KEY: Record<string, ProgramKey> = {
     tupad: 'TUPAD',
@@ -36,7 +36,6 @@ function BeneficiaryDashboard() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             const token = localStorage.getItem('token');
-            const user_name = localStorage.getItem('user_name');
             const role = localStorage.getItem('role');
 
             if (!token || role !== 'beneficiary') {

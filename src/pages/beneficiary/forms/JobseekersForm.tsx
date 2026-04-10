@@ -53,18 +53,20 @@ function JobSeekerForm() {
     "Customer Service", "Virtual Assistant", "Bookkeeping"
   ];
 
+  type FormState = typeof JOBSEEKER_INITIAL_STATE;
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: FormState) => ({ ...prev, [name]: value }));
   };
 
   const handleSkillClick = (skill: string) => {
-    setFormData(prev => ({
+    setFormData((prev: FormState) => ({
       ...prev,
       technicalSkills: prev.technicalSkills.includes(skill)
-        ? prev.technicalSkills.filter(s => s !== skill)
+        ? prev.technicalSkills.filter((s: string) => s !== skill)
         : [...prev.technicalSkills, skill]
     }));
   };

@@ -102,7 +102,6 @@ function BeneficiaryApplication() {
     useEffect(() => {
         const fetchData = async () => {
             const token = localStorage.getItem('token');
-            const user_name = localStorage.getItem('user_name');
             const role = localStorage.getItem('role');
             const userId = localStorage.getItem('user_id');
 

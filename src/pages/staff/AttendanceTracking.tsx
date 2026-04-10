@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Edit2, Trash2, Calendar, Users } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../api/config';
 

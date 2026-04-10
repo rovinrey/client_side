@@ -4,6 +4,9 @@ import { API_BASE_URL } from './config';
 const BASE_URL = `${API_BASE_URL}/api/spes-documents`;
 
 export type DocumentFieldId =
+    | 'spes_form2'
+    | 'spes_form2a'
+    | 'spes_form4'
     | 'passport_picture'
     | 'birth_certificate'
     | 'certificate_of_indigency'

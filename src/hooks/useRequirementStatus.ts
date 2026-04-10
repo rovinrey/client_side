@@ -68,6 +68,9 @@ const GENERIC_REQUIREMENT_LABELS: Record<string, Record<string, string>> = {
 };
 
 const SPES_REQUIREMENT_LABELS: Record<DocumentFieldId, string> = {
+    spes_form2: 'SPES Form 2',
+    spes_form2a: 'SPES Form 2A',
+    spes_form4: 'SPES Form 4',
     passport_picture: 'Passport Size Picture',
     birth_certificate: 'Birth Certificate',
     certificate_of_indigency: 'Certificate of Indigency',
