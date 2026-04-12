@@ -23,6 +23,8 @@ interface Beneficiary {
     is_active: number;
     application_id: number | null;
     program_type: string | null;
+    program_id: number | null;
+    program_name: string | null;
     application_status: string | null;
     approval_date: string | null;
     applied_at: string | null;
@@ -682,9 +684,16 @@ const BeneficiaryPage = () => {
                                         <td className="px-6 py-4 text-sm text-gray-600 font-medium">{b.contact_number || "N/A"}</td>
                                         <td className="px-6 py-4 text-sm text-gray-600 font-medium max-w-[200px] truncate">{b.address || "N/A"}</td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-600">
-                                                {b.program_type ? toLabel(b.program_type) : "N/A"}
-                                            </span>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-600 w-fit">
+                                                    {b.program_type ? toLabel(b.program_type) : "N/A"}
+                                                </span>
+                                                {b.program_name && (
+                                                    <span className="text-[10px] text-gray-500 font-medium pl-2 truncate max-w-[180px]" title={b.program_name}>
+                                                        {b.program_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">{b.gender || "N/A"}</td>
                                         <td className="px-6 py-4">

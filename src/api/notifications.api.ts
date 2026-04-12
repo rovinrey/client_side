@@ -13,6 +13,7 @@ export interface Notification {
     type: 'program_available' | 'program_ongoing' | 'program_coming_soon' | 'program_completed' | 'general';
     is_read: number;
     created_at: string;
+    program_id: number | null;
     program_name: string | null;
     program_status: string | null;
     start_date: string | null;

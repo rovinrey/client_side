@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { dilpAPI } from "../../../api/dilp.api";
+import { validateDilpForm, formatErrors } from '../../../utils/validation';
 
 const DILP_DRAFT_KEY = 'dilp_form_draft_v1';
 
@@ -71,7 +72,7 @@ const DILP_INITIAL_STATE: FormData = {
     brief_description: '',
 };
 
-function DilpForm() {
+function DilpForm({ programId }: { programId?: number | null }) {
     const [formData, setFormData] = useState<FormData>(() => {
         try {
             const saved = localStorage.getItem(DILP_DRAFT_KEY);
@@ -105,17 +106,20 @@ function DilpForm() {
         setSuccess(false);
 
         try {
-            // Basic Validation
-            if (!formData.proponent_name.trim()) throw new Error("Proponent name is required");
-            if (!formData.project_title.trim()) throw new Error("Project title is required");
-            if (!formData.proposed_amount) throw new Error("Proposed amount is required");
-            if (!formData.mobile_number.trim()) throw new Error("Mobile number is required");
+            // Validate form
+            const validationErrors = validateDilpForm(formData);
+            if (validationErrors.length > 0) {
+                setError(formatErrors(validationErrors));
+                setLoading(false);
+                return;
+            }
 
             const response = await dilpAPI.submitDilpApplication({
                 ...formData,
                 proposed_amount: parseFloat(formData.proposed_amount),
                 estimated_monthly_income: parseFloat(formData.estimated_monthly_income || "0"),
                 number_of_beneficiaries: parseInt(formData.number_of_beneficiaries || "0"),
+                program_id: programId || undefined,
             });
 
             console.log("Submitted:", response);

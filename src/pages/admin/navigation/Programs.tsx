@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
+import { validateProgramForm, formatErrors } from '../../../utils/validation';
 
 interface Program {
     id: number;
@@ -104,7 +105,7 @@ const Programs = () => {
     const fetchPrograms = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/programs/allPrograms`);
+            const response = await axios.get(`${API_BASE_URL}/api/programs/allPrograms`, { headers: getAuthHeaders() });
             setPrograms(response.data.map((prog: any) => ({
                 id: prog.program_id,
                 program_name: prog.program_name,
@@ -179,6 +180,14 @@ const Programs = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate form
+        const validationErrors = validateProgramForm(formData);
+        if (validationErrors.length > 0) {
+            setToast({ message: formatErrors(validationErrors), type: "error" });
+            return;
+        }
+
         setSubmitting(true);
 
         const payload = {
@@ -204,7 +213,7 @@ const Programs = () => {
                     setToast({ message: "Program updated successfully!", type: "success" });
                 }
             } else {
-                const response = await axios.post(`${API_BASE_URL}/api/programs`, payload);
+                const response = await axios.post(`${API_BASE_URL}/api/programs`, payload, { headers: getAuthHeaders() });
                 if (response.status === 201) {
                     closeModal();
                     fetchPrograms();

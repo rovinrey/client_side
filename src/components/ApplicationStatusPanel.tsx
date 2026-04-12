@@ -71,7 +71,9 @@ const ApplicationStatusPanel: React.FC<ApplicationStatusPanelProps> = ({  submis
                   className="rounded-xl border border-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                 >
                   <div>
-                    <p className="font-semibold text-slate-900">{item.program_type} Application</p>
+                    <p className="font-semibold text-slate-900">
+                      {item.program_name || item.program_type} Application
+                    </p>
                     <p className="text-xs text-slate-500 mt-1">
                       Submitted on {formatDate(item.applied_at)}
                     </p>

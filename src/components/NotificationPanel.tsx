@@ -19,12 +19,22 @@ import {
 } from '../api/notifications.api';
 import type { ProgramKey } from '../constants/beneficiaryPrograms';
 
-const PROGRAM_NAME_TO_KEY: Record<string, ProgramKey> = {
-    tupad: 'TUPAD',
-    spes: 'SPES',
-    dilp: 'DILP',
-    gip: 'GIP',
-    job_seekers: 'JOBSEEKERS',
+const PROGRAM_TYPE_PREFIXES: { prefix: string; key: ProgramKey }[] = [
+    { prefix: 'tupad', key: 'TUPAD' },
+    { prefix: 'spes', key: 'SPES' },
+    { prefix: 'dilp', key: 'DILP' },
+    { prefix: 'gip', key: 'GIP' },
+    { prefix: 'job_seekers', key: 'JOBSEEKERS' },
+    { prefix: 'job seekers', key: 'JOBSEEKERS' },
+    { prefix: 'jobseekers', key: 'JOBSEEKERS' },
+];
+
+const resolveProgramKey = (programName: string): ProgramKey | null => {
+    const lower = programName.toLowerCase().trim();
+    for (const { prefix, key } of PROGRAM_TYPE_PREFIXES) {
+        if (lower === prefix || lower.startsWith(prefix + ' ')) return key;
+    }
+    return null;
 };
 
 const typeConfig: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
@@ -115,10 +125,12 @@ export default function NotificationPanel() {
         if (!notif.is_read) handleMarkRead(notif.notification_id);
 
         if (notif.program_name) {
-            const programKey = PROGRAM_NAME_TO_KEY[notif.program_name.toLowerCase()];
+            const programKey = resolveProgramKey(notif.program_name);
             if (programKey) {
                 setIsOpen(false);
-                navigate('/beneficiary/application', { state: { program: programKey } });
+                navigate('/beneficiary/application', {
+                    state: { program: programKey, programId: notif.program_id },
+                });
                 return;
             }
         }

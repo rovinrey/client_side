@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { gipAPI } from "../../../api/gip.api";
+import { validateGipForm, formatErrors, type ValidationError } from '../../../utils/validation';
 
 const GIP_DRAFT_KEY = 'gip_form_draft_v1';
 
@@ -33,7 +34,7 @@ const GIP_INITIAL_STATE = {
     emergencyContact: ""
 };
 
-export default function GIPRegistration() {
+export default function GIPRegistration({ programId }: { programId?: number | null }) {
     const [formData, setFormData] = useState(() => {
         try {
             const saved = localStorage.getItem(GIP_DRAFT_KEY);
@@ -46,6 +47,10 @@ export default function GIPRegistration() {
     });
 
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<ValidationError[]>([]);
+    const [success, setSuccess] = useState(false);
+
+    const fieldError = (field: string) => errors.find(e => e.field === field)?.message;
 
     // Auto-save draft on every change
     useEffect(() => {
@@ -65,9 +70,12 @@ export default function GIPRegistration() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrors([]);
+        setSuccess(false);
 
-        if (!formData.firstName || !formData.lastName || !formData.barangay) {
-            alert("Please fill all required fields.");
+        const validationErrors = validateGipForm(formData);
+        if (validationErrors.length > 0) {
+            setErrors(validationErrors);
             return;
         }
 
@@ -94,15 +102,17 @@ export default function GIPRegistration() {
                 government_id: formData.governmentId || null,
                 emergency_name: formData.emergencyName || null,
                 emergency_contact: formData.emergencyContact || null,
+                program_id: programId || undefined,
             };
 
             await gipAPI.submitGipApplication(payload);
             localStorage.removeItem(GIP_DRAFT_KEY);
             setFormData(GIP_INITIAL_STATE);
-            alert("GIP Application Submitted Successfully!");
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 5000);
         } catch (err: any) {
             const msg = err?.response?.data?.message || err.message || "Submission failed";
-            alert(msg);
+            setErrors([{ field: 'general', message: msg }]);
         } finally {
             setLoading(false);
         }
@@ -123,6 +133,21 @@ export default function GIPRegistration() {
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+
+                {success && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                        ✓ GIP Application Submitted Successfully!
+                    </div>
+                )}
+
+                {errors.length > 0 && (
+                    <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md text-sm">
+                        <p className="font-semibold mb-1">Please fix the following errors:</p>
+                        <ul className="list-disc list-inside">
+                            {errors.map((err, i) => <li key={i}>{err.message}</li>)}
+                        </ul>
+                    </div>
+                )}
 
                 {/* Personal Information */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

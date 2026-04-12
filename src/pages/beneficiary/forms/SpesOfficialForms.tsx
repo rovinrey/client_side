@@ -77,7 +77,7 @@ const input_style =
     'w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm';
 const label_style = 'block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider';
 
-function SpesOfficialForms() {
+function SpesOfficialForms({ programId }: { programId?: number | null }) {
     const [search_params] = useSearchParams();
     const navigate = useNavigate();
     const from_requirements = search_params.get('from') === 'requirements';
@@ -227,6 +227,7 @@ function SpesOfficialForms() {
         try {
             const submission_payload = {
                 user_id: user_id ? Number(user_id) : undefined,
+                program_id: programId || undefined,
                 // top-level beneficiary fields (from Form 2)
                 first_name: form_2.first_name,
                 middle_name: form_2.middle_name,

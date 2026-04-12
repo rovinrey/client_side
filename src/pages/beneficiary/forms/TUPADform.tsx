@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
+import { validateTupadForm, formatErrors, type ValidationError } from '../../../utils/validation';
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
 
@@ -39,7 +40,7 @@ function calculateAge(dateOfBirth: string): string {
     return age >= 0 ? String(age) : "";
 }
 
-function TupadForm() {
+function TupadForm({ programId }: { programId?: number | null }) {
     const [formData, setFormData] = useState(() => {
         try {
             const saved = localStorage.getItem(TUPAD_DRAFT_KEY);
@@ -51,6 +52,9 @@ function TupadForm() {
         return INITIAL_FORM_STATE;
     });
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<ValidationError[]>([]);
+
+    const fieldError = (field: string) => errors.find(e => e.field === field)?.message;
 
     // Auto-save draft on every change
     useEffect(() => {
@@ -76,10 +80,12 @@ function TupadForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrors([]);
 
-        // Basic frontend validation
-        if (!formData.first_name || !formData.last_name || !formData.date_of_birth || !formData.valid_id_type || !formData.id_number) {
-            alert("Please fill in all required fields!");
+        // Validate form
+        const validationErrors = validateTupadForm(formData);
+        if (validationErrors.length > 0) {
+            setErrors(validationErrors);
             return;
         }
 
@@ -119,6 +125,7 @@ function TupadForm() {
                 ...formData,
                 user_id: Number(userId),
                 program_type: 'TUPAD',
+                program_id: programId || undefined,
                 work_category: formData.occupation || null,
             };
 
@@ -155,24 +162,48 @@ function TupadForm() {
                 </p>
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+                    {errors.length > 0 && (
+                        <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md text-sm">
+                            <p className="font-semibold mb-1">Please fix the following errors:</p>
+                            <ul className="list-disc list-inside">
+                                {errors.map((err, i) => <li key={i}>{err.message}</li>)}
+                            </ul>
+                        </div>
+                    )}
+
                     {/* Name Section */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input type="text" name="first_name" placeholder="First Name *" value={formData.first_name} onChange={handleChange} className={inputStyle} required />
-                        <input type="text" name="last_name" placeholder="Last Name *" value={formData.last_name} onChange={handleChange} className={inputStyle} required />
+                        <div>
+                            <input type="text" name="first_name" placeholder="First Name *" value={formData.first_name} onChange={handleChange} className={`${inputStyle} ${fieldError('first_name') ? 'border-red-500' : ''}`} required />
+                            {fieldError('first_name') && <p className="text-red-500 text-xs mt-1">{fieldError('first_name')}</p>}
+                        </div>
+                        <div>
+                            <input type="text" name="last_name" placeholder="Last Name *" value={formData.last_name} onChange={handleChange} className={`${inputStyle} ${fieldError('last_name') ? 'border-red-500' : ''}`} required />
+                            {fieldError('last_name') && <p className="text-red-500 text-xs mt-1">{fieldError('last_name')}</p>}
+                        </div>
                     </div>
 
                     <input type="text" name="middle_name" placeholder="Middle Name" value={formData.middle_name} onChange={handleChange} className={inputStyle} />
 
                     {/* Personal Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={inputStyle} required />
+                        <div>
+                            <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={`${inputStyle} ${fieldError('date_of_birth') ? 'border-red-500' : ''}`} required />
+                            {fieldError('date_of_birth') && <p className="text-red-500 text-xs mt-1">{fieldError('date_of_birth')}</p>}
+                        </div>
                         <input type="number" name="age" placeholder="Age" value={formData.age} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} />
                     </div>
 
-                    <input type="text" name="contact_number" placeholder="Contact Number" value={formData.contact_number} onChange={handleChange} className={inputStyle} />
+                    <div>
+                        <input type="text" name="contact_number" placeholder="Contact Number" value={formData.contact_number} onChange={handleChange} className={`${inputStyle} ${fieldError('contact_number') ? 'border-red-500' : ''}`} />
+                        {fieldError('contact_number') && <p className="text-red-500 text-xs mt-1">{fieldError('contact_number')}</p>}
+                    </div>
 
                     {/* Address */}
-                    <input type="text" name="address" placeholder="Complete Address *" value={formData.address} onChange={handleChange} className={inputStyle} required />
+                    <div>
+                        <input type="text" name="address" placeholder="Complete Address *" value={formData.address} onChange={handleChange} className={`${inputStyle} ${fieldError('address') ? 'border-red-500' : ''}`} required />
+                        {fieldError('address') && <p className="text-red-500 text-xs mt-1">{fieldError('address')}</p>}
+                    </div>
 
                     {/* Employment */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,8 +227,14 @@ function TupadForm() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input type="text" name="valid_id_type" placeholder="Type of ID *" value={formData.valid_id_type} onChange={handleChange} className={inputStyle} required />
-                        <input type="text" name="id_number" placeholder="ID Number *" value={formData.id_number} onChange={handleChange} className={inputStyle} required />
+                        <div>
+                            <input type="text" name="valid_id_type" placeholder="Type of ID *" value={formData.valid_id_type} onChange={handleChange} className={`${inputStyle} ${fieldError('valid_id_type') ? 'border-red-500' : ''}`} required />
+                            {fieldError('valid_id_type') && <p className="text-red-500 text-xs mt-1">{fieldError('valid_id_type')}</p>}
+                        </div>
+                        <div>
+                            <input type="text" name="id_number" placeholder="ID Number *" value={formData.id_number} onChange={handleChange} className={`${inputStyle} ${fieldError('id_number') ? 'border-red-500' : ''}`} required />
+                            {fieldError('id_number') && <p className="text-red-500 text-xs mt-1">{fieldError('id_number')}</p>}
+                        </div>
                     </div>
 
                     <input type="text" name="name_of_beneficiary" placeholder="Full Name of Beneficiary" value={formData.name_of_beneficiary} onChange={handleChange} className={inputStyle} />

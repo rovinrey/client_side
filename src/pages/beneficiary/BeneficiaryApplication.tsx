@@ -14,6 +14,7 @@ import DocumentUploadModule, { type RequirementDef } from "../../components/Docu
 import ApplicationStatusPanel from "../../components/ApplicationStatusPanel";
 import RequirementStatusBanner from "../../components/RequirementStatusBanner";
 import applicationStatusAPI, { type ApplicationSubmission } from "../../api/applicationStatus.api";
+import { programsAPI, type ActiveProgram } from "../../api/programs.api";
 import { useRequirementStatus } from "../../hooks/useRequirementStatus";
 import {
     BENEFICIARY_PROGRAMS,
@@ -65,6 +66,7 @@ function BeneficiaryApplication() {
     const [loading, setLoading] = useState(true);
 
     const [mainTab, setMainTab] = useState<MainTab>('apply');
+    const navProgramId = (location.state as { programId?: number } | null)?.programId ?? null;
     const [activeProgram, setActiveProgram] = useState<ProgramKey>(() => {
         const stateProgram = (location.state as { program?: ProgramKey } | null)?.program;
         if (stateProgram && BENEFICIARY_PROGRAMS.some((p) => p.value === stateProgram)) {
@@ -74,6 +76,11 @@ function BeneficiaryApplication() {
     });
     const [subTab, setSubTab] = useState<SubTab>('form');
     const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
+
+    // ── Active programs for the selected program type ──
+    const [activePrograms, setActivePrograms] = useState<ActiveProgram[]>([]);
+    const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+    const [programsLoading, setProgramsLoading] = useState(false);
 
     const { getStatus, isComplete, loading: reqLoading, error: reqError } = useRequirementStatus();
     const allDocsSubmitted = isComplete(activeProgram);
@@ -89,14 +96,43 @@ function BeneficiaryApplication() {
             JOBSEEKERS: 'job_seekers',
         };
         const dbProgramType = PROGRAM_TYPE_MAP[activeProgram];
-        // Find the latest submission for this program that is Pending or Approved
+        // Check per-batch: only block if user has a pending/approved application
+        // for the SAME specific program batch (program_id)
+        if (selectedProgramId) {
+            return submissions.find(
+                (s) => s.program_type === dbProgramType &&
+                       s.program_id === selectedProgramId &&
+                       (s.status === 'Pending' || s.status === 'Approved')
+            ) ?? null;
+        }
+        // Fallback when no batch is selected: check for any pending of this type
         return submissions.find(
-            (s) => s.program_type === dbProgramType && (s.status === 'Pending' || s.status === 'Approved')
+            (s) => s.program_type === dbProgramType && s.status === 'Pending'
         ) ?? null;
-    }, [submissions, activeProgram]);
+    }, [submissions, activeProgram, selectedProgramId]);
 
     useEffect(() => {
         localStorage.setItem(BENEFICIARY_SELECTED_PROGRAM_KEY, activeProgram);
+    }, [activeProgram]);
+
+    // ── Fetch active programs (batches) for the selected program type ──
+    useEffect(() => {
+        const apiKey = PROGRAM_API_KEY[activeProgram];
+        setProgramsLoading(true);
+        setActivePrograms([]);
+        setSelectedProgramId(null);
+        programsAPI.getActiveByType(apiKey)
+            .then((programs) => {
+                setActivePrograms(programs);
+                // Auto-select the batch from notification navigation
+                if (navProgramId && programs.some((p) => p.program_id === navProgramId)) {
+                    setSelectedProgramId(navProgramId);
+                } else if (programs.length === 1) {
+                    setSelectedProgramId(programs[0].program_id);
+                }
+            })
+            .catch(() => setActivePrograms([]))
+            .finally(() => setProgramsLoading(false));
     }, [activeProgram]);
 
     useEffect(() => {
@@ -231,6 +267,44 @@ function BeneficiaryApplication() {
                                     </svg>
                                 </div>
                             </div>
+
+                            {/* ── Program batch selector (when multiple active batches exist) ── */}
+                            {!programsLoading && activePrograms.length > 1 && (
+                                <div className="mt-3">
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                        Select Program Batch
+                                    </label>
+                                    <div className="relative w-full sm:max-w-sm">
+                                        <select
+                                            value={selectedProgramId ?? ''}
+                                            onChange={(e) => setSelectedProgramId(e.target.value ? Number(e.target.value) : null)}
+                                            className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-10 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 outline-none transition-all"
+                                        >
+                                            <option value="">— Choose a batch —</option>
+                                            {activePrograms.map((p) => (
+                                                <option key={p.program_id} value={p.program_id}>
+                                                    {p.program_name} ({p.filled}/{p.slots} slots)
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── No active program warning ── */}
+                            {!programsLoading && activePrograms.length === 0 && (
+                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-amber-700 font-medium">
+                                        No active {activeProgram} program is currently open for applications.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Sub-tabs: Form / Requirements */}
@@ -289,8 +363,8 @@ function BeneficiaryApplication() {
                                                     existingApplication.status === 'Approved' ? 'text-emerald-600' : 'text-teal-600'
                                                 }`}>
                                                     {existingApplication.status === 'Approved'
-                                                        ? `Your ${activeProgram} application was approved. You cannot submit another application for this program.`
-                                                        : `Your ${activeProgram} application (submitted ${new Date(existingApplication.applied_at).toLocaleDateString()}) is still being reviewed. Please wait for a decision before submitting again.`}
+                                                        ? `Your ${existingApplication.program_name || activeProgram} application was approved. You cannot submit another application for this batch.`
+                                                        : `Your ${existingApplication.program_name || activeProgram} application (submitted ${new Date(existingApplication.applied_at).toLocaleDateString()}) is still being reviewed. Please wait for a decision before submitting again.`}
                                                 </p>
                                                 <button
                                                     type="button"
@@ -328,11 +402,11 @@ function BeneficiaryApplication() {
                                         </div>
                                     ) : (
                                         <>
-                                            {activeProgram === 'TUPAD'      && <TupadForm />}
-                                            {activeProgram === 'SPES'       && <SpesForm />}
-                                            {activeProgram === 'DILP'       && <DilpForm />}
-                                            {activeProgram === 'GIP'        && <GIPform />}
-                                            {activeProgram === 'JOBSEEKERS' && <JobSeekerForm />}
+                                            {activeProgram === 'TUPAD'      && <TupadForm programId={selectedProgramId} />}
+                                            {activeProgram === 'SPES'       && <SpesForm programId={selectedProgramId} />}
+                                            {activeProgram === 'DILP'       && <DilpForm programId={selectedProgramId} />}
+                                            {activeProgram === 'GIP'        && <GIPform programId={selectedProgramId} />}
+                                            {activeProgram === 'JOBSEEKERS' && <JobSeekerForm programId={selectedProgramId} />}
                                         </>
                                     )}
                                 </div>

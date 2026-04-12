@@ -7,6 +7,8 @@ const API_URL = `${API_BASE_URL}/api/applications`;
 export interface ApplicationSubmission {
   application_id: number;
   program_type: string;
+  program_id: number | null;
+  program_name: string | null;
   status: string;
   rejection_reason: string | null;
   applied_at: string;

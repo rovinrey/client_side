@@ -47,3 +47,6 @@ backend/src/config/db.js
 
 # Always ignore node_modules
 node_modules/
+
+.env.example
+.env.production

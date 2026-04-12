@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Briefcase, MapPin, Star, GraduationCap, Send } from "lucide-react";
 import { jobseekerAPI } from "../../../api/jobseeker.api";
+import { validateJobSeekerForm, formatErrors } from '../../../utils/validation';
 
 const JOBSEEKER_DRAFT_KEY = 'jobseeker_form_draft_v1';
 
@@ -26,7 +27,7 @@ const JOBSEEKER_INITIAL_STATE = {
   expectedSalary: ""
 };
 
-function JobSeekerForm() {
+function JobSeekerForm({ programId }: { programId?: number | null }) {
   const [formData, setFormData] = useState(() => {
     try {
       const saved = localStorage.getItem(JOBSEEKER_DRAFT_KEY);
@@ -77,8 +78,13 @@ function JobSeekerForm() {
     setSuccess(false);
 
     try {
-      if (!formData.fullName.trim()) throw new Error("Full name is required");
-      if (!formData.contactNumber.trim()) throw new Error("Contact number is required");
+      // Validate form
+      const validationErrors = validateJobSeekerForm(formData);
+      if (validationErrors.length > 0) {
+        setError(formatErrors(validationErrors));
+        setLoading(false);
+        return;
+      }
 
       // Split fullName into first/middle/last
       const nameParts = formData.fullName.trim().split(/\s+/);
@@ -104,6 +110,7 @@ function JobSeekerForm() {
         certifications: formData.certifications || null,
         availability: formData.availability || null,
         expected_salary: formData.expectedSalary || null,
+        program_id: programId || undefined,
       };
 
       await jobseekerAPI.submitJobSeekerApplication(payload);

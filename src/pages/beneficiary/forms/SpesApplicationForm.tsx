@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import FormStepButton from '../../../components/Buttons';
 import { API_BASE_URL } from '../../../api/config';
+import { isValidPhone, isValidEmail, isMinLength, isPastDate, calculateAge } from '../../../utils/validation';
 
 interface SPESFormData {
     first_name: string;
@@ -79,6 +80,9 @@ const SPESApplication: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [stepErrors, setStepErrors] = useState<string[]>([]);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [submitSuccess, setSubmitSuccess] = useState(false);
 
     const steps = useMemo(
         () => [
@@ -119,29 +123,40 @@ const SPESApplication: React.FC = () => {
     };
 
     const isCurrentStepValid = () => {
+        const errs: string[] = [];
         switch (currentStep.key) {
             case 'personal':
-                return Boolean(
-                    formData.first_name.trim() &&
-                        formData.last_name.trim() &&
-                        formData.date_of_birth &&
-                        formData.place_of_birth.trim() &&
-                        formData.gender &&
-                        formData.civil_status
-                );
+                if (!isMinLength(formData.first_name, 2)) errs.push('First name is required (min 2 chars)');
+                if (!isMinLength(formData.last_name, 2)) errs.push('Last name is required (min 2 chars)');
+                if (!isPastDate(formData.date_of_birth)) errs.push('Valid birth date is required');
+                else {
+                    const age = calculateAge(formData.date_of_birth);
+                    if (age !== null && age < 15) errs.push('SPES applicant must be at least 15 years old');
+                    if (age !== null && age > 30) errs.push('SPES is for ages 30 and below');
+                }
+                if (!formData.place_of_birth.trim()) errs.push('Place of birth is required');
+                if (!formData.gender) errs.push('Gender is required');
+                if (!formData.civil_status) errs.push('Civil status is required');
+                break;
             case 'contact':
-                return Boolean(
-                    formData.present_address.trim() &&
-                        formData.permanent_address.trim() &&
-                        formData.contact_number.trim()
-                );
+                if (!formData.present_address.trim()) errs.push('Present address is required');
+                if (!formData.permanent_address.trim()) errs.push('Permanent address is required');
+                if (!formData.contact_number.trim()) errs.push('Contact number is required');
+                else if (!isValidPhone(formData.contact_number)) errs.push('Invalid phone number format');
+                if (formData.email && !isValidEmail(formData.email)) errs.push('Invalid email format');
+                break;
             case 'categories':
-                return Boolean(formData.type_of_student);
+                if (!formData.type_of_student) errs.push('Student type is required');
+                break;
             case 'education':
-                return Boolean(formData.school.trim() && formData.education_level);
+                if (!formData.school.trim()) errs.push('School name is required');
+                if (!formData.education_level) errs.push('Education level is required');
+                break;
             default:
-                return true;
+                break;
         }
+        setStepErrors(errs);
+        return errs.length === 0;
     };
 
     const goNext = () => {
@@ -160,6 +175,8 @@ const SPESApplication: React.FC = () => {
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        setSubmitError(null);
+        setSubmitSuccess(false);
 
         if (!isLastStep || !isCurrentStepValid()) {
             return;
@@ -179,13 +196,14 @@ const SPESApplication: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Submission failed');
+                const data = await response.json().catch(() => null);
+                throw new Error(data?.message || 'Submission failed');
             }
 
-            alert('Application Submitted Successfully!');
-        } catch (error) {
+            setSubmitSuccess(true);
+        } catch (error: any) {
             console.error('Submission error:', error);
-            alert('Error submitting. Please check your connection.');
+            setSubmitError(error.message || 'Error submitting. Please check your connection.');
         } finally {
             setLoading(false);
         }
@@ -218,6 +236,27 @@ const SPESApplication: React.FC = () => {
                         />
                     </div>
                 </div>
+
+                {submitSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 mb-4">
+                        ✓ SPES Application Submitted Successfully!
+                    </div>
+                )}
+
+                {submitError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-4">
+                        ✗ {submitError}
+                    </div>
+                )}
+
+                {stepErrors.length > 0 && (
+                    <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
+                        <p className="font-semibold mb-1">Please fix the following:</p>
+                        <ul className="list-disc list-inside">
+                            {stepErrors.map((err, i) => <li key={i}>{err}</li>)}
+                        </ul>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {currentStep.key === 'personal' && (
