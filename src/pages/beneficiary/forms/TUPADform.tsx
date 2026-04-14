@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
-import { validateTupadForm, formatErrors, type ValidationError } from '../../../utils/validation';
+import { validateTupadForm, type ValidationError } from '../../../utils/validation';
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
 
@@ -40,7 +40,7 @@ function calculateAge(dateOfBirth: string): string {
     return age >= 0 ? String(age) : "";
 }
 
-function TupadForm({ programId }: { programId?: number | null }) {
+function TupadForm() {
     const [formData, setFormData] = useState(() => {
         try {
             const saved = localStorage.getItem(TUPAD_DRAFT_KEY);
@@ -125,7 +125,7 @@ function TupadForm({ programId }: { programId?: number | null }) {
                 ...formData,
                 user_id: Number(userId),
                 program_type: 'TUPAD',
-                program_id: programId || undefined,
+                // program_id removed
                 work_category: formData.occupation || null,
             };
 
@@ -177,13 +177,14 @@ function TupadForm({ programId }: { programId?: number | null }) {
                             <input type="text" name="first_name" placeholder="First Name *" value={formData.first_name} onChange={handleChange} className={`${inputStyle} ${fieldError('first_name') ? 'border-red-500' : ''}`} required />
                             {fieldError('first_name') && <p className="text-red-500 text-xs mt-1">{fieldError('first_name')}</p>}
                         </div>
+                        <input type="text" name="middle_name" placeholder="Middle Name" value={formData.middle_name} onChange={handleChange} className={inputStyle} />
                         <div>
                             <input type="text" name="last_name" placeholder="Last Name *" value={formData.last_name} onChange={handleChange} className={`${inputStyle} ${fieldError('last_name') ? 'border-red-500' : ''}`} required />
                             {fieldError('last_name') && <p className="text-red-500 text-xs mt-1">{fieldError('last_name')}</p>}
                         </div>
                     </div>
 
-                    <input type="text" name="middle_name" placeholder="Middle Name" value={formData.middle_name} onChange={handleChange} className={inputStyle} />
+                    
 
                     {/* Personal Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

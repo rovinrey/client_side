@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { gipAPI } from "../../../api/gip.api";
-import { validateGipForm, formatErrors, type ValidationError } from '../../../utils/validation';
+import { validateGipForm, type ValidationError } from '../../../utils/validation';
 
 const GIP_DRAFT_KEY = 'gip_form_draft_v1';
 
@@ -50,7 +50,7 @@ export default function GIPRegistration({ programId }: { programId?: number | nu
     const [errors, setErrors] = useState<ValidationError[]>([]);
     const [success, setSuccess] = useState(false);
 
-    const fieldError = (field: string) => errors.find(e => e.field === field)?.message;
+    //const fieldError = (field: string) => errors.find(e => e.field === field)?.message;
 
     // Auto-save draft on every change
     useEffect(() => {
