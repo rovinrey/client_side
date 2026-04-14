@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { LayoutGrid, Clock, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
+import { LayoutGrid, Clock, AlertCircle, CheckCircle2, Clock3, User } from "lucide-react";
 import { API_BASE_URL } from '../../api/config';
 
 import TupadForm from "./forms/TUPADform";
@@ -25,8 +25,7 @@ import {
 type MainTab = 'apply' | 'status';
 type SubTab = 'form' | 'requirements';
 
-// ─── Upload requirement defs for non-SPES programs ───────────────────────────
-
+// Defined outside to prevent re-creation on every render
 const UPLOAD_REQUIREMENTS: Record<string, RequirementDef[]> = {
     tupad: [
         { id: 'government_id', label: 'Government Issued ID', description: 'Valid government-issued ID with current address.' },
@@ -61,23 +60,23 @@ const PROGRAM_API_KEY: Record<ProgramKey, string> = {
 function BeneficiaryApplication() {
     const navigate = useNavigate();
     const location = useLocation();
+    
+    // Auth & Profile State
     const [user, setUser] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Tab & Navigation State
     const [mainTab, setMainTab] = useState<MainTab>('apply');
-    const navProgramId = (location.state as { programId?: number } | null)?.programId ?? null;
+    const [subTab, setSubTab] = useState<SubTab>('form');
     const [activeProgram, setActiveProgram] = useState<ProgramKey>(() => {
         const stateProgram = (location.state as { program?: ProgramKey } | null)?.program;
-        if (stateProgram && BENEFICIARY_PROGRAMS.some((p) => p.value === stateProgram)) {
-            return stateProgram;
-        }
-        return 'TUPAD';
+        return (stateProgram && BENEFICIARY_PROGRAMS.some(p => p.value === stateProgram)) 
+            ? stateProgram : 'TUPAD';
     });
-    const [subTab, setSubTab] = useState<SubTab>('form');
-    const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
 
-    // ── Active programs for the selected program type ──
+    // Submissions & Batch Selection
+    const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
     const [activePrograms, setActivePrograms] = useState<ActiveProgram[]>([]);
     const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
     const [programsLoading, setProgramsLoading] = useState(false);
@@ -85,55 +84,40 @@ function BeneficiaryApplication() {
     const { getStatus, isComplete, loading: reqLoading, error: reqError } = useRequirementStatus();
     const allDocsSubmitted = isComplete(activeProgram);
 
-    // ── Check if user already submitted an application for the active program ──
+    // Filter logic memoized for performance
     const existingApplication = useMemo(() => {
-        // Map frontend ProgramKey to backend program_type stored in DB
-        const PROGRAM_TYPE_MAP: Record<ProgramKey, string> = {
-            TUPAD: 'tupad',
-            SPES: 'spes',
-            DILP: 'dilp',
-            GIP: 'gip',
-            JOBSEEKERS: 'job_seekers',
-        };
-        const dbProgramType = PROGRAM_TYPE_MAP[activeProgram];
-        // Check per-batch: only block if user has a pending/approved application
-        // for the SAME specific program batch (program_id)
-        if (selectedProgramId) {
-            return submissions.find(
-                (s) => s.program_type === dbProgramType &&
-                       s.program_id === selectedProgramId &&
-                       (s.status === 'Pending' || s.status === 'Approved')
-            ) ?? null;
-        }
-        // Fallback when no batch is selected: check for any pending of this type
-        return submissions.find(
-            (s) => s.program_type === dbProgramType && s.status === 'Pending'
+        const dbProgramType = PROGRAM_API_KEY[activeProgram];
+        return submissions.find(s => 
+            s.program_type === dbProgramType && 
+            (selectedProgramId ? s.program_id === selectedProgramId : true) &&
+            (s.status === 'Pending' || s.status === 'Approved')
         ) ?? null;
     }, [submissions, activeProgram, selectedProgramId]);
 
+    // Side Effects
     useEffect(() => {
         localStorage.setItem(BENEFICIARY_SELECTED_PROGRAM_KEY, activeProgram);
     }, [activeProgram]);
 
-    // ── Fetch active programs (batches) for the selected program type ──
     useEffect(() => {
         const apiKey = PROGRAM_API_KEY[activeProgram];
+        const navProgramId = (location.state as { programId?: number } | null)?.programId;
+        
         setProgramsLoading(true);
-        setActivePrograms([]);
-        setSelectedProgramId(null);
         programsAPI.getActiveByType(apiKey)
             .then((programs) => {
                 setActivePrograms(programs);
-                // Auto-select the batch from notification navigation
-                if (navProgramId && programs.some((p) => p.program_id === navProgramId)) {
+                if (navProgramId && programs.some(p => p.program_id === navProgramId)) {
                     setSelectedProgramId(navProgramId);
                 } else if (programs.length === 1) {
                     setSelectedProgramId(programs[0].program_id);
+                } else {
+                    setSelectedProgramId(null);
                 }
             })
             .catch(() => setActivePrograms([]))
             .finally(() => setProgramsLoading(false));
-    }, [activeProgram]);
+    }, [activeProgram, location.state]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -148,30 +132,25 @@ function BeneficiaryApplication() {
 
             try {
                 const [profileRes, statusRes] = await Promise.allSettled([
-                    axios.get(
-                        `${API_BASE_URL}/api/auth/getProfile`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    ),
+                    axios.get(`${API_BASE_URL}/api/auth/getProfile`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
                     applicationStatusAPI.getStatus(userId || '', token),
                 ]);
 
                 if (profileRes.status === 'fulfilled') {
                     setUser(profileRes.value.data);
-                } else {
-                    const status = profileRes.reason?.response?.status;
-                    if (status === 401 || status === 403) {
-                        localStorage.removeItem('token');
-                        navigate('/login');
-                        return;
-                    }
-                    setError('Failed to load profile data.');
+                } else if (profileRes.reason?.response?.status === 401) {
+                    localStorage.clear();
+                    navigate('/login');
+                    return;
                 }
 
                 if (statusRes.status === 'fulfilled') {
                     setSubmissions(statusRes.value.submissions || []);
                 }
-            } catch {
-                setError('An unexpected error occurred.');
+            } catch (err) {
+                setError('Failed to sync portal data.');
             } finally {
                 setLoading(false);
             }
@@ -185,254 +164,175 @@ function BeneficiaryApplication() {
             <div className="flex items-center justify-center py-24">
                 <div className="flex flex-col items-center gap-3">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />
-                    <span className="text-sm text-gray-500 font-medium">Loading…</span>
+                    <span className="text-sm text-gray-400 font-medium">Initializing Portal...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <section className="w-full max-w-5xl mx-auto space-y-5">
-            {/* ── Page header ── */}
-            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 sm:px-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <section className="w-full max-w-5xl mx-auto space-y-6 p-4">
+            {/* Header */}
+            <header className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Application Portal</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Apply for a PESO program or check your submission status.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Application Portal</h1>
+                    <p className="text-sm text-gray-500">Manage your program applications and document status.</p>
                 </div>
                 {user && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-200 self-start sm:self-center">
-                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                        </svg>
-                        {user.first_name || user.user_name}
-                    </span>
+                    <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-2 ring-1 ring-inset ring-teal-200">
+                        <User className="h-4 w-4 text-teal-600" />
+                        <span className="text-sm font-bold text-teal-800">
+                            {user.first_name || user.user_name}
+                        </span>
+                    </div>
                 )}
-                {error && <p className="text-sm text-red-500">{error}</p>}
-            </div>
+            </header>
 
-            {/* ── Main tabs ── */}
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                {/* Tab bar */}
-                <div className="flex border-b border-gray-200">
-                    <button
-                        type="button"
-                        onClick={() => setMainTab('apply')}
-                        className={`relative flex items-center gap-2 flex-1 justify-center py-3.5 text-sm font-semibold transition-colors focus:outline-none ${
-                            mainTab === 'apply' ? 'text-teal-700 bg-teal-50' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                        }`}
-                    >
-                        <LayoutGrid size={15} />
-                        New Application
-                        {mainTab === 'apply' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600" />}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setMainTab('status')}
-                        className={`relative flex items-center gap-2 flex-1 justify-center py-3.5 text-sm font-semibold transition-colors focus:outline-none ${
-                            mainTab === 'status' ? 'text-teal-700 bg-teal-50' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                        }`}
-                    >
-                        <Clock size={15} />
-                        My Submissions
-                        {submissions.length > 0 && (
-                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-600 px-1.5 text-[10px] font-bold text-white">
-                                {submissions.length}
-                            </span>
-                        )}
-                        {mainTab === 'status' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600" />}
-                    </button>
-                </div>
+            <main className="rounded-2xl border border-gray-100 bg-white shadow-md overflow-hidden">
+                {/* Navigation */}
+                <nav className="flex bg-gray-50/50 border-b border-gray-100">
+                    {[
+                        { id: 'apply', label: 'New Application', icon: LayoutGrid },
+                        { id: 'status', label: 'My Submissions', icon: Clock, count: submissions.length }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setMainTab(tab.id as MainTab)}
+                            className={`relative flex items-center gap-3 flex-1 justify-center py-5 text-sm font-bold transition-all ${
+                                mainTab === tab.id ? 'text-teal-700 bg-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            <tab.icon size={18} strokeWidth={2.5} />
+                            {tab.label}
+                            {tab.count ? (
+                                <span className="absolute top-4 right-1/4 rounded-full bg-teal-600 px-1.5 py-0.5 text-[10px] text-white">
+                                    {tab.count}
+                                </span>
+                            ) : null}
+                            {mainTab === tab.id && <div className="absolute bottom-0 inset-x-0 h-1 bg-teal-600" />}
+                        </button>
+                    ))}
+                </nav>
 
-                {/* ── Apply panel ── */}
-                {mainTab === 'apply' && (
-                    <div className="p-4 sm:p-6">
-                        {/* Program selector */}
-                        <div className="mb-6">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                Select Program
-                            </label>
-                            <div className="relative w-full sm:max-w-sm">
-                                <select
-                                    value={activeProgram}
-                                    onChange={(e) => { setActiveProgram(e.target.value as ProgramKey); setSubTab('form'); }}
-                                    className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-10 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 outline-none transition-all"
-                                >
-                                    {BENEFICIARY_PROGRAMS.map((p) => (
-                                        <option key={p.value} value={p.value}>{p.label}</option>
-                                    ))}
-                                </select>
-                                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                    </svg>
+                {/* Body */}
+                <div className="p-6 sm:p-10">
+                    {mainTab === 'apply' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                                {/* Selectors */}
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Target Program</label>
+                                    <select
+                                        value={activeProgram}
+                                        onChange={(e) => { setActiveProgram(e.target.value as ProgramKey); setSubTab('form'); }}
+                                        className="w-full rounded-xl border-gray-200 bg-gray-50 p-3.5 text-sm font-bold focus:ring-4 focus:ring-teal-500/10 outline-none transition-all cursor-pointer"
+                                    >
+                                        {BENEFICIARY_PROGRAMS.map((p) => (
+                                            <option key={p.value} value={p.value}>{p.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                            </div>
 
-                            {/* ── Program batch selector (when multiple active batches exist) ── */}
-                            {!programsLoading && activePrograms.length > 1 && (
-                                <div className="mt-3">
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                        Select Program Batch
-                                    </label>
-                                    <div className="relative w-full sm:max-w-sm">
+                                {!programsLoading && activePrograms.length > 0 && (
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Available Batch</label>
                                         <select
                                             value={selectedProgramId ?? ''}
                                             onChange={(e) => setSelectedProgramId(e.target.value ? Number(e.target.value) : null)}
-                                            className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-10 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 outline-none transition-all"
+                                            className="w-full rounded-xl border-gray-200 bg-gray-50 p-3.5 text-sm font-bold focus:ring-4 focus:ring-teal-500/10 outline-none transition-all cursor-pointer"
                                         >
-                                            <option value="">— Choose a batch —</option>
+                                            <option value="">— Select a Specific Batch —</option>
                                             {activePrograms.map((p) => (
                                                 <option key={p.program_id} value={p.program_id}>
                                                     {p.program_name} ({p.filled}/{p.slots} slots)
                                                 </option>
                                             ))}
                                         </select>
-                                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                            </svg>
-                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Warnings */}
+                            {!programsLoading && activePrograms.length === 0 && (
+                                <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-5 flex gap-4 items-start">
+                                    <AlertCircle className="text-amber-500 flex-shrink-0" size={20} />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-amber-900">Program Currently Unavailable</h4>
+                                        <p className="text-xs text-amber-700 mt-1">We aren't accepting applications for {activeProgram} at this time. Please check back later.</p>
                                     </div>
                                 </div>
                             )}
 
-                            {/* ── No active program warning ── */}
-                            {!programsLoading && activePrograms.length === 0 && (
-                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
-                                    <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-amber-700 font-medium">
-                                        No active {activeProgram} program is currently open for applications.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Sub-tabs: Form / Requirements */}
-                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="flex gap-1 rounded-xl bg-gray-100 p-1 mb-6 w-full sm:w-auto sm:inline-flex">
+                            {/* Sub-Tabs */}
+                            <div className="flex gap-2 mb-10 bg-gray-100/80 p-1.5 rounded-2xl w-fit">
                                 <button
-                                    type="button"
                                     onClick={() => setSubTab('form')}
-                                    className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-                                        subTab === 'form'
-                                            ? 'bg-white text-gray-900 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-700'
-                                    }`}
+                                    className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${subTab === 'form' ? 'bg-white shadow-md text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
-                                    Application Form
+                                    Form
                                 </button>
                                 <button
-                                    type="button"
                                     onClick={() => navigate(`/beneficiary/requirements?program=${activeProgram}`)}
-                                    className={`flex-1 sm:flex-none rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-                                        subTab === 'requirements'
-                                            ? 'bg-white text-gray-900 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-700'
-                                    }`}
+                                    className="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight text-gray-500 hover:text-gray-700 flex items-center gap-2"
                                 >
                                     Requirements
-                                    {allDocsSubmitted && (
-                                        <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-emerald-500 align-middle" />
-                                    )}
+                                    {allDocsSubmitted && <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm" />}
                                 </button>
                             </div>
 
+                            {/* Dynamic Content */}
                             {subTab === 'form' && (
-                                <div>
-                                    {/* ── Already-submitted application banner ── */}
-                                    {existingApplication && (
-                                        <div className={`mb-5 rounded-xl border px-4 py-4 flex items-start gap-3 ${
-                                            existingApplication.status === 'Approved'
-                                                ? 'border-emerald-200 bg-emerald-50'
-                                                : 'border-teal-200 bg-teal-50'
+                                <section>
+                                    {existingApplication ? (
+                                        <div className={`p-10 rounded-3xl border-2 border-dashed flex flex-col items-center text-center ${
+                                            existingApplication.status === 'Approved' ? 'bg-emerald-50 border-emerald-100' : 'bg-teal-50/50 border-teal-100'
                                         }`}>
-                                            {existingApplication.status === 'Approved' ? (
-                                                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500 mt-0.5" />
-                                            ) : (
-                                                <Clock3 className="h-5 w-5 flex-shrink-0 text-teal-500 mt-0.5" />
-                                            )}
-                                            <div>
-                                                <p className={`text-sm font-semibold ${
-                                                    existingApplication.status === 'Approved' ? 'text-emerald-800' : 'text-teal-800'
-                                                }`}>
-                                                    {existingApplication.status === 'Approved'
-                                                        ? 'Your application has been approved'
-                                                        : 'You already have a pending application'}
-                                                </p>
-                                                <p className={`text-xs mt-0.5 ${
-                                                    existingApplication.status === 'Approved' ? 'text-emerald-600' : 'text-teal-600'
-                                                }`}>
-                                                    {existingApplication.status === 'Approved'
-                                                        ? `Your ${existingApplication.program_name || activeProgram} application was approved. You cannot submit another application for this batch.`
-                                                        : `Your ${existingApplication.program_name || activeProgram} application (submitted ${new Date(existingApplication.applied_at).toLocaleDateString()}) is still being reviewed. Please wait for a decision before submitting again.`}
-                                                </p>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setMainTab('status')}
-                                                    className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold underline ${
-                                                        existingApplication.status === 'Approved' ? 'text-emerald-700 hover:text-emerald-900' : 'text-teal-700 hover:text-teal-900'
-                                                    }`}
-                                                >
-                                                    View My Submissions →
-                                                </button>
+                                            {existingApplication.status === 'Approved' ? <CheckCircle2 className="text-emerald-500 mb-4" size={40} /> : <Clock3 className="text-teal-500 mb-4" size={40} />}
+                                            <h3 className="text-lg font-black text-gray-900">Application Under Review</h3>
+                                            <p className="text-sm text-gray-500 max-w-sm mt-2">
+                                                A submission for <strong>{activeProgram}</strong> is already being processed. Double applications for the same batch are restricted.
+                                            </p>
+                                            <button onClick={() => setMainTab('status')} className="mt-6 px-6 py-2 bg-white rounded-xl shadow-sm border border-gray-200 text-xs font-bold text-teal-700 hover:bg-gray-50 transition-colors">
+                                                Check Progress
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-8">
+                                            <RequirementStatusBanner programKey={activeProgram} status={getStatus(activeProgram)} loading={reqLoading} error={reqError} />
+                                            <div className="bg-white rounded-2xl">
+                                                {activeProgram === 'TUPAD'      && <TupadForm programId={selectedProgramId} />}
+                                                {activeProgram === 'SPES'       && <SpesForm programId={selectedProgramId} />}
+                                                {activeProgram === 'DILP'       && <DilpForm programId={selectedProgramId} />}
+                                                {activeProgram === 'GIP'        && <GIPform programId={selectedProgramId} />}
+                                                {activeProgram === 'JOBSEEKERS' && <JobSeekerForm programId={selectedProgramId} />}
                                             </div>
                                         </div>
                                     )}
+                                </section>
+                            )}
 
-                                    {/* ── Requirement status banner (only when no blocking application) ── */}
-                                    {!existingApplication && (
-                                        <RequirementStatusBanner
-                                            programKey={activeProgram}
-                                            status={getStatus(activeProgram)}
-                                            loading={reqLoading}
-                                            error={reqError}
+                            {subTab === 'requirements' && (
+                                <section className="animate-in slide-in-from-right-4 duration-300">
+                                    {activeProgram === 'SPES' ? (
+                                        <SPESDocumentsModule />
+                                    ) : (
+                                        <DocumentUploadModule
+                                            programType={PROGRAM_API_KEY[activeProgram]}
+                                            requirements={UPLOAD_REQUIREMENTS[PROGRAM_API_KEY[activeProgram]] || []}
                                         />
                                     )}
-
-                                    {/* ── Application form (hidden when already applied) ── */}
-                                    {existingApplication ? (
-                                        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center">
-                                            <AlertCircle className="mx-auto h-10 w-10 text-gray-300" />
-                                            <p className="mt-3 text-sm font-semibold text-gray-500">
-                                                Application form is disabled
-                                            </p>
-                                            <p className="mt-1 text-xs text-gray-400">
-                                                You already have a {existingApplication.status.toLowerCase()} application for this program.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {activeProgram === 'TUPAD'      && <TupadForm programId={selectedProgramId} />}
-                                            {activeProgram === 'SPES'       && <SpesForm programId={selectedProgramId} />}
-                                            {activeProgram === 'DILP'       && <DilpForm programId={selectedProgramId} />}
-                                            {activeProgram === 'GIP'        && <GIPform programId={selectedProgramId} />}
-                                            {activeProgram === 'JOBSEEKERS' && <JobSeekerForm programId={selectedProgramId} />}
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            {subTab === 'requirements' && activeProgram === 'SPES' && (
-                                <SPESDocumentsModule />
-                            )}
-
-                            {subTab === 'requirements' && activeProgram !== 'SPES' && UPLOAD_REQUIREMENTS[PROGRAM_API_KEY[activeProgram]] && (
-                                <DocumentUploadModule
-                                    programType={PROGRAM_API_KEY[activeProgram]}
-                                    requirements={UPLOAD_REQUIREMENTS[PROGRAM_API_KEY[activeProgram]]}
-                                />
+                                </section>
                             )}
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* ── Status panel ── */}
-                {mainTab === 'status' && (
-                    <div className="p-4 sm:p-6">
-                        <ApplicationStatusPanel submissions={submissions} />
-                    </div>
-                )}
-            </div>
+                    {mainTab === 'status' && (
+                        <div className="animate-in fade-in duration-500">
+                            <ApplicationStatusPanel submissions={submissions} />
+                        </div>
+                    )}
+                </div>
+            </main>
         </section>
     );
 }

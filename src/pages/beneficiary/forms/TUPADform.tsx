@@ -40,7 +40,9 @@ function calculateAge(dateOfBirth: string): string {
     return age >= 0 ? String(age) : "";
 }
 
-function TupadForm() {
+function TupadForm({ programId }: { programId?: number | null }) {
+    // programId is accepted for consistency and future use, but not used currently
+    void programId;
     const [formData, setFormData] = useState(() => {
         try {
             const saved = localStorage.getItem(TUPAD_DRAFT_KEY);
