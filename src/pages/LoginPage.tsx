@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { setAuth } from "../utils/auth";
 
+import { API_BASE_URL } from '../api/config';
+
 const ROLE_REDIRECTS: Record<string, string> = {
     admin: "/admin",
     staff: "/staff",
@@ -39,7 +41,7 @@ function Login() {
 
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/auth/login`,
+                `${API_BASE_URL}/api/auth/login`,
                 {
                     identifier: trimmedIdentifier,
                     password: credentials.password,

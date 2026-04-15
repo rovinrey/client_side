@@ -2,6 +2,8 @@ import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import { Link, useNavigate } from "react-router-dom";
 
+import { API_BASE_URL } from '../api/config';
+
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
 
 function SignupPage() {
@@ -64,7 +66,7 @@ function SignupPage() {
         setIsLoading(true);
 
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/signup`, {
+            await axios.post(`${API_BASE_URL}/api/auth/signup`, {
                 user_name: formData.user_name.trim(),
                 identifier: formData.identifier.trim(),
                 password: formData.password,
