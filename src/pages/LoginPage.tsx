@@ -1,4 +1,5 @@
 import { useState } from "react";
+import EyeIcon from '../components/EyeIcon';
 import { Link, useNavigate } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { setAuth } from "../utils/auth";
@@ -11,6 +12,7 @@ const ROLE_REDIRECTS: Record<string, string> = {
     beneficiary: "/beneficiary",
 };
 
+
 function Login() {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,7 @@ function Login() {
         username: "",
         password: "",
     });
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCredentials((prev) => ({
@@ -121,13 +124,14 @@ function Login() {
                         />
                     </div>
 
-                    <div>
+
+                    <div style={{ position: 'relative' }}>
                         <label htmlFor="password" className="sr-only">
                             Password
                         </label>
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="Password"
                             value={credentials.password}
@@ -138,6 +142,13 @@ function Login() {
                             disabled={isSubmitting}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition disabled:opacity-50"
                         />
+                        <span
+                            style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            onClick={() => setShowPassword((s) => !s)}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            <EyeIcon open={showPassword} />
+                        </span>
                     </div>
 
                     <button

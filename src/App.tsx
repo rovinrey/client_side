@@ -2,8 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import NotificationPanel from './components/NotificationPanel';
+
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import BeneficiaryDashboard from './pages/beneficiary/BeneficiaryDashboard';
 import BeneficiaryApplication from './pages/beneficiary/BeneficiaryApplication';
@@ -119,6 +122,8 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin Protected Routes with Sidebar */}
         <Route
