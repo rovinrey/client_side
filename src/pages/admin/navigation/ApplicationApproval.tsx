@@ -56,8 +56,8 @@ const ApplicationApproval = () => {
         try {
             const endpoint =
                 selectedFilter === "Pending"
-                    ? `${API_BASE_URL}/api/forms/applications/pending`
-                    : `${API_BASE_URL}/api/forms/applications`;
+                    ? `${API_BASE_URL}/api/applications/applications/pending`
+                    : `${API_BASE_URL}/api/applications/applications`;
 
             const params: Record<string, string> = {};
             if (selectedFilter !== "Pending") {
@@ -100,7 +100,7 @@ const ApplicationApproval = () => {
                 params.programType = selectedProgram;
             }
 
-            const response = await axios.get(`${API_BASE_URL}/api/forms/export`, {
+            const response = await axios.get(`${API_BASE_URL}/api/applications/export`, {
                 headers: authHeaders,
                 params,
                 responseType: 'blob',
@@ -138,7 +138,7 @@ const ApplicationApproval = () => {
         setProcessingId(applicationId);
         try {
             const response = await axios.put(
-                `${API_BASE_URL}/api/forms/applications/${applicationId}/approve`,
+                `${API_BASE_URL}/api/applications/applications/${applicationId}/approve`,
                 {},
                 { headers: authHeaders }
             );
@@ -167,7 +167,7 @@ const ApplicationApproval = () => {
         
         try {
             const response = await axios.put(
-                `${API_BASE_URL}/api/forms/applications/${applicationId}/reject`,
+                `${API_BASE_URL}/api/applications/applications/${applicationId}/reject`,
                 { reason: reason || null },
                 { headers: authHeaders }
             );

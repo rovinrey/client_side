@@ -72,7 +72,7 @@ const SPESApplication: React.FC = () => {
         setError(null);
 
         try {
-            await axios.post(`${API_BASE_URL}/api/forms/apply/spes`, formData);
+            await axios.post(`${API_BASE_URL}/api/applications/apply/spes`, formData);
 
             setSuccess(true);
             setFormData(initialState);

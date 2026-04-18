@@ -131,7 +131,7 @@ function TupadForm({ programId }: { programId?: number | null }) {
                 work_category: formData.occupation || null,
             };
 
-            const response = await axios.post(`${API_BASE_URL}/api/forms/apply/tupad`, payload, {
+            const response = await axios.post(`${API_BASE_URL}/api/applications/apply/tupad`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

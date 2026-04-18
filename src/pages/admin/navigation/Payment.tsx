@@ -209,7 +209,7 @@ const PaymentPage = () => {
         setSavingWage(true);
         try {
             await axios.put(
-                `${API_BASE_URL}/api/forms/settings/daily-wage`,
+                `${API_BASE_URL}/api/applications/settings/daily-wage`,
                 { daily_wage: parsed },
                 { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
             );

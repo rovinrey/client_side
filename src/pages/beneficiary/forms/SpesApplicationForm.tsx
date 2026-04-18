@@ -186,7 +186,7 @@ const SPESApplication: React.FC = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/forms/apply/spes`, {
+            const response = await fetch(`${API_BASE_URL}/api/applications/apply/spes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -171,7 +171,7 @@ function EditableSection({
             if (table === "beneficiaries") {
                 // Use the dedicated beneficiary update endpoint
                 await axios.put(
-                    `${API_BASE_URL}/api/forms/applications/${applicationId}/beneficiary`,
+                    `${API_BASE_URL}/api/applications/applications/${applicationId}/beneficiary`,
                     editValues,
                     { headers: getAuthHeaders() }
                 );
@@ -187,7 +187,7 @@ function EditableSection({
                 }));
 
                 await axios.put(
-                    `${API_BASE_URL}/api/forms/excel/update`,
+                    `${API_BASE_URL}/api/applications/excel/update`,
                     { updates },
                     { headers: getAuthHeaders() }
                 );
@@ -307,7 +307,7 @@ function ApplicationDetails() {
         try {
             const programType = details?.application.program_type || "tupad";
             const res = await axios.get(
-                `${API_BASE_URL}/api/forms/annex-d/export?programType=${programType}`,
+                `${API_BASE_URL}/api/applications/annex-d/export?programType=${programType}`,
                 {
                     headers: getAuthHeaders(),
                     responseType: "blob",

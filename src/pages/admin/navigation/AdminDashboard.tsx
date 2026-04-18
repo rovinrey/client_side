@@ -58,7 +58,7 @@ function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/forms/recent?limit=10`, {
+            const response = await axios.get(`${API_BASE_URL}/api/applications/recent?limit=10`, {
                 headers: authHeaders,
             });
             setRecentApps(response.data || []);
@@ -103,7 +103,7 @@ function AdminDashboard() {
         setProcessingId(id);
         try {
             const res = await axios.put(
-                `${API_BASE_URL}/api/forms/applications/${id}/approve`,
+                `${API_BASE_URL}/api/applications/applications/${id}/approve`,
                 {},
                 { headers: authHeaders }
             );
@@ -125,7 +125,7 @@ function AdminDashboard() {
         setProcessingId(id);
         try {
             const res = await axios.put(
-                `${API_BASE_URL}/api/forms/applications/${id}/reject`,
+                `${API_BASE_URL}/api/applications/applications/${id}/reject`,
                 { reason: reason || null },
                 { headers: authHeaders }
             );

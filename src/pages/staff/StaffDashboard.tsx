@@ -53,7 +53,7 @@ export default function StaffDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/forms/recent?limit=10`, {
+            const response = await axios.get(`${API_BASE_URL}/api/applications/recent?limit=10`, {
                 headers: authHeaders,
             });
             setRecentApps(response.data || []);

@@ -676,26 +676,29 @@ type AccordionProps = {
 const AccordionSection = ({ icon, title, badge, isOpen, onToggle, onExport, exporting, kpis, children }: AccordionProps) => (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden print:break-inside-avoid">
         {/* Clickable header — always visible */}
-        <button type="button" onClick={onToggle}
-            className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50/80 focus:outline-none">
-            <span className="text-slate-400">{icon}</span>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-slate-900 truncate">{title}</h2>
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500">{badge}</span>
-                </div>
-                {/* Inline KPIs visible when collapsed */}
-                {!isOpen && kpis.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
-                        {kpis.map((k) => (
-                            <span key={k.label} className="text-[11px] text-slate-500">
-                                <span className="font-semibold text-slate-700">{k.value}</span> {k.label}
-                            </span>
-                        ))}
+        <div className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50/80">
+            <button type="button" onClick={onToggle}
+                className="flex flex-1 items-center gap-3 text-left transition-colors hover:bg-slate-50/80 focus:outline-none min-w-0">
+                <span className="text-slate-400">{icon}</span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-semibold text-slate-900 truncate">{title}</h2>
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500">{badge}</span>
                     </div>
-                )}
-            </div>
-            {/* Export button — always accessible, stops click propagation */}
+                    {/* Inline KPIs visible when collapsed */}
+                    {!isOpen && kpis.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+                            {kpis.map((k) => (
+                                <span key={k.label} className="text-[11px] text-slate-500">
+                                    <span className="font-semibold text-slate-700">{k.value}</span> {k.label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <span className="shrink-0 text-slate-300 print:hidden">{isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
+            </button>
+            {/* Export button — separate from toggle button */}
             <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onExport(); }}
@@ -706,8 +709,7 @@ const AccordionSection = ({ icon, title, badge, isOpen, onToggle, onExport, expo
                 {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                 Excel
             </button>
-            <span className="shrink-0 text-slate-300 print:hidden">{isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
-        </button>
+        </div>
 
         {/* Expanded content */}
         {isOpen && (

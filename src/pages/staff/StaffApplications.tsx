@@ -52,8 +52,8 @@ const StaffApplications = () => {
         try {
             const endpoint =
                 selectedFilter === "Pending"
-                    ? `${API_BASE_URL}/api/forms/applications/pending`
-                    : `${API_BASE_URL}/api/forms/applications`;
+                    ? `${API_BASE_URL}/api/applications/applications/pending`
+                    : `${API_BASE_URL}/api/applications/applications`;
 
             const params: Record<string, string> = {};
             if (selectedFilter !== "Pending") {

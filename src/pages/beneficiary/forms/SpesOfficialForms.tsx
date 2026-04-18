@@ -287,7 +287,7 @@ function SpesOfficialForms({ programId }: { programId?: number | null }) {
                 },
             };
 
-            const response = await fetch(`${API_BASE_URL}/api/forms/apply/spes`, {
+            const response = await fetch(`${API_BASE_URL}/api/applications/apply/spes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

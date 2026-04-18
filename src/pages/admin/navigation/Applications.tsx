@@ -32,7 +32,7 @@ function Applications() {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/forms/all`);
+            const response = await axios.get(`${API_BASE_URL}/api/applications/all`);
             setApps(response.data);
         } catch (err: any) {
             setError(err.message);
@@ -51,7 +51,7 @@ function Applications() {
             }
 
             const query = params.toString();
-            const url = `${API_BASE_URL}/api/forms/export${query ? `?${query}` : ''}`;
+            const url = `${API_BASE_URL}/api/applications/export${query ? `?${query}` : ''}`;
 
             const response = await axios.get(url, { responseType: 'blob' });
             const blob = new Blob([response.data], {

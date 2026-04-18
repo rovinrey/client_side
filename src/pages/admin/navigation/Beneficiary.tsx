@@ -236,13 +236,13 @@ const BeneficiaryPage = () => {
         setDupError(null);
         try {
             if (dupCategory === "applications") {
-                const res = await axios.get<{ duplicates: DupApplication[] }>(`${API_BASE_URL}/api/forms/duplicates/detect`, { headers: getAuthHeaders() });
+                const res = await axios.get<{ duplicates: DupApplication[] }>(`${API_BASE_URL}/api/applications/duplicates/detect`, { headers: getAuthHeaders() });
                 setDupApps(res.data.duplicates);
             } else if (dupCategory === "beneficiaries") {
-                const res = await axios.get<{ duplicates: DupBeneficiary[] }>(`${API_BASE_URL}/api/forms/duplicates/beneficiaries`, { headers: getAuthHeaders() });
+                const res = await axios.get<{ duplicates: DupBeneficiary[] }>(`${API_BASE_URL}/api/applications/duplicates/beneficiaries`, { headers: getAuthHeaders() });
                 setDupBens(res.data.duplicates);
             } else {
-                const res = await axios.get<{ duplicates: DupAttendance[] }>(`${API_BASE_URL}/api/forms/duplicates/attendance`, { headers: getAuthHeaders() });
+                const res = await axios.get<{ duplicates: DupAttendance[] }>(`${API_BASE_URL}/api/applications/duplicates/attendance`, { headers: getAuthHeaders() });
                 setDupAtt(res.data.duplicates);
             }
         } catch (err: any) {
@@ -262,13 +262,13 @@ const BeneficiaryPage = () => {
         setDupSuccess(null);
         try {
             if (action === "mark") {
-                await axios.put(`${API_BASE_URL}/api/forms/duplicates/${appId}/mark`, { notes: dupNoteInput || "Marked as duplicate" }, { headers: getAuthHeaders() });
+                await axios.put(`${API_BASE_URL}/api/applications/duplicates/${appId}/mark`, { notes: dupNoteInput || "Marked as duplicate" }, { headers: getAuthHeaders() });
                 setDupSuccess(`Application #${appId} marked as duplicate`);
             } else if (action === "unmark") {
-                await axios.put(`${API_BASE_URL}/api/forms/duplicates/${appId}/unmark`, {}, { headers: getAuthHeaders() });
+                await axios.put(`${API_BASE_URL}/api/applications/duplicates/${appId}/unmark`, {}, { headers: getAuthHeaders() });
                 setDupSuccess(`Duplicate flag removed from #${appId}`);
             } else {
-                await axios.put(`${API_BASE_URL}/api/forms/duplicates/${appId}/resolve`, { action }, { headers: getAuthHeaders() });
+                await axios.put(`${API_BASE_URL}/api/applications/duplicates/${appId}/resolve`, { action }, { headers: getAuthHeaders() });
                 setDupSuccess(action === "reject" ? `Application #${appId} rejected` : `Application #${appId} kept`);
             }
             setDupExpandedId(null);
@@ -285,7 +285,7 @@ const BeneficiaryPage = () => {
         if (!confirm("Delete this duplicate beneficiary record? This cannot be undone.")) return;
         setDupActionLoading(id);
         try {
-            await axios.delete(`${API_BASE_URL}/api/forms/duplicates/beneficiaries/${id}`, { headers: getAuthHeaders() });
+            await axios.delete(`${API_BASE_URL}/api/applications/duplicates/beneficiaries/${id}`, { headers: getAuthHeaders() });
             setDupSuccess(`Beneficiary #${id} deleted`);
             fetchDuplicates();
         } catch (err: any) {
@@ -299,7 +299,7 @@ const BeneficiaryPage = () => {
         if (!confirm("Delete this duplicate attendance record?")) return;
         setDupActionLoading(id);
         try {
-            await axios.delete(`${API_BASE_URL}/api/forms/duplicates/attendance/${id}`, { headers: getAuthHeaders() });
+            await axios.delete(`${API_BASE_URL}/api/applications/duplicates/attendance/${id}`, { headers: getAuthHeaders() });
             setDupSuccess(`Attendance record #${id} deleted`);
             fetchDuplicates();
         } catch (err: any) {
