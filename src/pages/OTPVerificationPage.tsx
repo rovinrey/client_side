@@ -17,6 +17,16 @@ interface OTPVerificationPageProps {
  * - Verify OTP with retry logic
  * - Resend OTP with cooldown
  */
+
+/**
+ * Detect if identifier is phone or email
+ */
+const isPhoneNumber = (identifier: string): boolean => {
+  const phoneRegex = /^\+?[\d\s()-]{7,20}$/;
+  const digitsOnly = identifier.replace(/\D/g, '');
+  return phoneRegex.test(identifier) && digitsOnly.length >= 7 && digitsOnly.length <= 15;
+};
+
 const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
   identifier,
   userName,
@@ -30,6 +40,7 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
   const [maskedIdentifier, setMaskedIdentifier] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpRequested, setOtpRequested] = useState(false);
+  const [identifierType, setIdentifierType] = useState<'email' | 'phone'>('email');
 
   // Request OTP on component mount
   useEffect(() => {
@@ -37,6 +48,8 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
       try {
         setLoading(true);
         setError(null);
+        // Detect identifier type
+        setIdentifierType(isPhoneNumber(identifier) ? 'phone' : 'email');
         const response = await requestOTP(identifier, userName);
         setMaskedIdentifier(response.identifier);
         setOtpRequested(true);
@@ -107,8 +120,8 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Verify Your Identity</h2>
           <p className="text-sm text-slate-600">
-            We sent a verification code to {' '}
-            <span className="font-semibold text-teal-700">{maskedIdentifier || 'your email'}</span>
+            We sent a verification code to your {identifierType} {' '}
+            <span className="font-semibold text-teal-700">{maskedIdentifier || (identifierType === 'phone' ? 'phone' : 'email')}</span>
           </p>
         </div>
 
