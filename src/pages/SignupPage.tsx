@@ -1,8 +1,11 @@
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
+import PesoLogo from '../components/PesoLogo';
+import OTPVerificationPage from './OTPVerificationPage';
 import { Link, useNavigate } from "react-router-dom";
 
 import { API_BASE_URL } from '../api/config';
+import { requestOTP } from '../api/otp.api';
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
 
@@ -11,6 +14,7 @@ function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showOTPVerification, setShowOTPVerification] = useState(false);
     const [formData, setFormData] = useState({
         user_name: "",
         identifier: "",
@@ -52,7 +56,7 @@ function SignupPage() {
         return null;
     };
 
-    const handleSignup = async (e: React.FormEvent) => {
+    const handleSignupStep1 = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
@@ -63,9 +67,28 @@ function SignupPage() {
             return;
         }
 
-        setIsLoading(true);
+        try {
+            setIsLoading(true);
+            // Request OTP - this will initiate the verification flow
+            await requestOTP(formData.identifier, formData.user_name);
+            setShowOTPVerification(true);
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "Failed to request verification. Please try again.";
+            setError(errorMsg);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleOTPVerified = async (verified: boolean) => {
+        if (!verified) {
+            setError("OTP verification failed. Please try again.");
+            return;
+        }
 
         try {
+            setIsLoading(true);
+            // Complete signup after OTP verification
             await axios.post(`${API_BASE_URL}/api/auth/signup`, {
                 user_name: formData.user_name.trim(),
                 identifier: formData.identifier.trim(),
@@ -79,14 +102,30 @@ function SignupPage() {
             setTimeout(() => navigate("/login", { replace: true }), 1500);
         } catch (err: unknown) {
             if (err instanceof AxiosError) {
-                setError(err.response?.data?.message || "Unable to connect. Please try again.");
+                setError(err.response?.data?.message || "Failed to create account. Please try again.");
             } else {
                 setError("An unexpected error occurred.");
             }
+            setShowOTPVerification(false);
         } finally {
             setIsLoading(false);
         }
     };
+
+    // OTP Verification Page
+    if (showOTPVerification) {
+        return (
+            <OTPVerificationPage
+                identifier={formData.identifier.trim()}
+                userName={formData.user_name.trim()}
+                onVerified={handleOTPVerified}
+                onBack={() => {
+                    setShowOTPVerification(false);
+                    setError(null);
+                }}
+            />
+        );
+    }
 
     const inputClass =
         "w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition disabled:opacity-50";
@@ -95,7 +134,7 @@ function SignupPage() {
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6">
             <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-teal-700 mt-6">
                 <div className="text-center mb-4">
-                    <h2 className="text-3xl font-black text-amber-500 tracking-tight">PESO</h2>
+                    <PesoLogo size="md" className="mx-auto mb-4" />
                     <p className="text-sm text-slate-500 font-medium">Public Employment Service Office — Juban</p>
                 </div>
 
@@ -115,7 +154,7 @@ function SignupPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleSignup} className="space-y-5" noValidate>
+                <form onSubmit={handleSignupStep1} className="space-y-5" noValidate>
                     <div>
                         <label htmlFor="user_name" className="sr-only">Full Name</label>
                         <input

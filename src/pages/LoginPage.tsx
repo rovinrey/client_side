@@ -1,5 +1,6 @@
 import { useState } from "react";
 import EyeIcon from '../components/EyeIcon';
+import PesoLogo from '../components/PesoLogo';
 import { Link, useNavigate } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { setAuth } from "../utils/auth";
@@ -90,7 +91,7 @@ function Login() {
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
             <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-b-8 border-teal-700">
                 <div className="text-center mb-6">
-                    <h2 className="text-3xl font-black text-amber-500 tracking-tight">PESO</h2>
+                    <PesoLogo size="md" className="mx-auto mb-4" />
                     <p className="text-sm text-slate-500 font-medium">Public Employment Service Office — Juban</p>
                 </div>
 
