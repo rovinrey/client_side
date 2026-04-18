@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { gipAPI } from "../../../api/gip.api";
 import { validateGipForm, type ValidationError } from '../../../utils/validation';
+import { getUserId, getAuthToken, handleSessionExpired } from '../../../utils/auth.utils';
 
 const GIP_DRAFT_KEY = 'gip_form_draft_v1';
 
@@ -79,10 +80,19 @@ export default function GIPRegistration({ programId }: { programId?: number | nu
             return;
         }
 
+        // Check authentication
+        const userId = getUserId();
+        const token = getAuthToken();
+        if (!userId || !token) {
+            handleSessionExpired();
+            return;
+        }
+
         setLoading(true);
 
         try {
             const payload = {
+                user_id: userId,
                 first_name: formData.firstName,
                 middle_name: formData.middleName,
                 last_name: formData.lastName,

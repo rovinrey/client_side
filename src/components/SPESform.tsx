@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../api/config';
+import { getUserId, getAuthToken, handleSessionExpired } from '../utils/auth.utils';
 
 interface FormData {
     first_name: string;
@@ -71,8 +72,23 @@ const SPESApplication: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // Check authentication
+        const userId = getUserId();
+        const token = getAuthToken();
+        if (!userId || !token) {
+            handleSessionExpired();
+            return;
+        }
+
         try {
-            await axios.post(`${API_BASE_URL}/api/applications/apply/spes`, formData);
+            const payload = {
+                user_id: userId,
+                ...formData
+            };
+            
+            await axios.post(`${API_BASE_URL}/api/applications/apply/spes`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
             setSuccess(true);
             setFormData(initialState);

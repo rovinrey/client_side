@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Briefcase, MapPin, Star, GraduationCap, Send } from "lucide-react";
 import { jobseekerAPI } from "../../../api/jobseeker.api";
 import { validateJobSeekerForm, formatErrors } from '../../../utils/validation';
+import { getUserId, getAuthToken, handleSessionExpired } from '../../../utils/auth.utils';
 
 const JOBSEEKER_DRAFT_KEY = 'jobseeker_form_draft_v1';
 
@@ -78,6 +79,14 @@ function JobSeekerForm({ programId }: { programId?: number | null }) {
     setSuccess(false);
 
     try {
+      // Check authentication
+      const userId = getUserId();
+      const token = getAuthToken();
+      if (!userId || !token) {
+        handleSessionExpired();
+        return;
+      }
+
       // Validate form
       const validationErrors = validateJobSeekerForm(formData);
       if (validationErrors.length > 0) {
@@ -93,6 +102,7 @@ function JobSeekerForm({ programId }: { programId?: number | null }) {
       const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
 
       const payload = {
+        user_id: userId,
         first_name: firstName,
         middle_name: middleName,
         last_name: lastName,

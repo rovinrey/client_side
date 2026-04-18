@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { dilpAPI } from "../../../api/dilp.api";
 import { validateDilpForm } from '../../../utils/validation';
+import { getUserId, getAuthToken, handleSessionExpired } from '../../../utils/auth.utils';
 
 const DILP_DRAFT_KEY = 'dilp_form_draft_v1';
 
@@ -81,6 +82,14 @@ const DilpForm: React.FC<Props> = ({ programId }) => {
         setStatus({ loading: true, error: null, success: false });
 
         try {
+            // Check authentication first
+            const userId = getUserId();
+            const token = getAuthToken();
+            if (!userId || !token) {
+                handleSessionExpired();
+                return;
+            }
+
             // 1. Validation (The 'type' alias fix now allows this to pass)
             const validationErrors = validateDilpForm(formData);
             if (validationErrors.length > 0) {
@@ -89,6 +98,7 @@ const DilpForm: React.FC<Props> = ({ programId }) => {
 
             // 2. Data Transformation (Mapping strings to required numeric types for MySQL)
             const payload = {
+                user_id: userId,
                 ...formData,
                 proposed_amount: parseFloat(formData.proposed_amount) || 0,
                 estimated_monthly_income: parseFloat(formData.estimated_monthly_income) || 0,

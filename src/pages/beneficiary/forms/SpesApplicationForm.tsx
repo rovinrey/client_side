@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import FormStepButton from '../../../components/Buttons';
 import { API_BASE_URL } from '../../../api/config';
+import { getUserId, getAuthToken, handleSessionExpired } from '../../../utils/auth.utils';
 import { isValidPhone, isValidEmail, isMinLength, isPastDate, calculateAge } from '../../../utils/validation';
 
 interface SPESFormData {
@@ -182,17 +183,29 @@ const SPESApplication: React.FC = () => {
             return;
         }
 
+        // Check authentication
+        const userId = getUserId();
+        const token = getAuthToken();
+        if (!userId || !token) {
+            handleSessionExpired();
+            return;
+        }
+
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const payload = {
+                user_id: userId,
+                ...formData
+            };
+
             const response = await fetch(`${API_BASE_URL}/api/applications/apply/spes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {

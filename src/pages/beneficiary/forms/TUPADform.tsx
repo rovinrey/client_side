@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
-import { validateTupadForm, type ValidationError } from '../../../utils/validation';
+import { type ValidationError, validateTupadForm } from '../../../utils/validation';
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
 
@@ -85,7 +85,7 @@ function TupadForm({ programId }: { programId?: number | null }) {
         setErrors([]);
 
         // Validate form
-        const validationErrors = validateTupadForm(formData);
+        const validationErrors = validateTupadForm(formData as Record<string, unknown>);
         if (validationErrors.length > 0) {
             setErrors(validationErrors);
             return;

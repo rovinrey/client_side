@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../../../api/config';
+import { getUserId, getAuthToken, handleSessionExpired } from '../../../utils/auth.utils';
 
 export type SpesOfficialFormKey = 'form2' | 'form2a' | 'form4';
 
@@ -202,12 +203,11 @@ function SpesOfficialForms({ programId }: { programId?: number | null }) {
 
     // Shared helper – builds the full payload from current state and POSTs to backend.
     const submit_to_backend = async (success_msg: string) => {
-        const token = localStorage.getItem('token');
-        const user_id = localStorage.getItem('user_id');
+        const token = getAuthToken();
+        const user_id = getUserId();
 
-        if (!token) {
-            set_submit_state('error');
-            set_submit_message('You are not logged in. Please log in again.');
+        if (!token || !user_id) {
+            handleSessionExpired('Session expired. Please log in again.');
             return false;
         }
 
@@ -226,7 +226,7 @@ function SpesOfficialForms({ programId }: { programId?: number | null }) {
 
         try {
             const submission_payload = {
-                user_id: user_id ? Number(user_id) : undefined,
+                user_id: user_id,
                 program_id: programId || undefined,
                 // top-level beneficiary fields (from Form 2)
                 first_name: form_2.first_name,
