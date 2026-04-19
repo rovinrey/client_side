@@ -1,11 +1,9 @@
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import PesoLogo from '../components/PesoLogo';
-import OTPVerificationPage from './OTPVerificationPage';
 import { Link, useNavigate } from "react-router-dom";
 
 import { API_BASE_URL } from '../api/config';
-import { requestOTP } from '../api/otp.api';
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
 
@@ -14,7 +12,6 @@ function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [showOTPVerification, setShowOTPVerification] = useState(false);
     const [formData, setFormData] = useState({
         user_name: "",
         identifier: "",
@@ -56,7 +53,7 @@ function SignupPage() {
         return null;
     };
 
-    const handleSignupStep1 = async (e: React.FormEvent) => {
+    const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
@@ -69,31 +66,11 @@ function SignupPage() {
 
         try {
             setIsLoading(true);
-            // Request OTP - this will initiate the verification flow
-            await requestOTP(formData.identifier, formData.user_name);
-            setShowOTPVerification(true);
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : "Failed to request verification. Please try again.";
-            setError(errorMsg);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleOTPVerified = async (verified: boolean) => {
-        if (!verified) {
-            setError("OTP verification failed. Please try again.");
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-            // Complete signup after OTP verification
+            // Direct signup - no OTP verification required
             await axios.post(`${API_BASE_URL}/api/auth/signup`, {
                 user_name: formData.user_name.trim(),
                 identifier: formData.identifier.trim(),
                 password: formData.password,
-                role: "beneficiary",
             });
 
             setSuccess("Account created successfully! Redirecting to login…");
@@ -106,26 +83,10 @@ function SignupPage() {
             } else {
                 setError("An unexpected error occurred.");
             }
-            setShowOTPVerification(false);
         } finally {
             setIsLoading(false);
         }
     };
-
-    // OTP Verification Page
-    if (showOTPVerification) {
-        return (
-            <OTPVerificationPage
-                identifier={formData.identifier.trim()}
-                userName={formData.user_name.trim()}
-                onVerified={handleOTPVerified}
-                onBack={() => {
-                    setShowOTPVerification(false);
-                    setError(null);
-                }}
-            />
-        );
-    }
 
     const inputClass =
         "w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition disabled:opacity-50";
@@ -154,7 +115,7 @@ function SignupPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleSignupStep1} className="space-y-5" noValidate>
+                <form onSubmit={handleSignup} className="space-y-5" noValidate>
                     <div>
                         <label htmlFor="user_name" className="sr-only">Full Name</label>
                         <input
