@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (secrets, API keys)
+# Ignore ALL .env files except .env.example
+.env*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,6 +33,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.example
 .node_modules
 
 dist/
