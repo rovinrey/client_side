@@ -1,17 +1,22 @@
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
-import PesoLogo from '../components/PesoLogo';
+import EyeIcon from "../components/EyeIcon";
+import PesoLogo from "../components/PesoLogo";
 import { Link, useNavigate } from "react-router-dom";
-
-import { API_BASE_URL } from '../api/config';
+import { API_BASE_URL } from "../api/config";
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
 
 function SignupPage() {
     const navigate = useNavigate();
+
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     const [formData, setFormData] = useState({
         user_name: "",
         identifier: "",
@@ -66,7 +71,7 @@ function SignupPage() {
 
         try {
             setIsLoading(true);
-            // Direct signup - no OTP verification required
+
             await axios.post(`${API_BASE_URL}/api/auth/signup`, {
                 user_name: formData.user_name.trim(),
                 identifier: formData.identifier.trim(),
@@ -74,7 +79,12 @@ function SignupPage() {
             });
 
             setSuccess("Account created successfully! Redirecting to login…");
-            setFormData({ user_name: "", identifier: "", password: "", confirmPassword: "" });
+            setFormData({
+                user_name: "",
+                identifier: "",
+                password: "",
+                confirmPassword: "",
+            });
 
             setTimeout(() => navigate("/login", { replace: true }), 1500);
         } catch (err: unknown) {
@@ -96,7 +106,9 @@ function SignupPage() {
             <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-teal-700 mt-6">
                 <div className="text-center mb-4">
                     <PesoLogo size="md" className="mx-auto mb-4" />
-                    <p className="text-sm text-slate-500 font-medium">Public Employment Service Office — Juban</p>
+                    <p className="text-sm text-slate-500 font-medium">
+                        Public Employment Service Office — Juban
+                    </p>
                 </div>
 
                 <h3 className="text-2xl font-black text-center mb-8 uppercase tracking-tight text-gray-800">
@@ -104,90 +116,92 @@ function SignupPage() {
                 </h3>
 
                 {error && (
-                    <div role="alert" className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium">
+                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div role="status" className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm font-medium">
+                    <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm font-medium">
                         {success}
                     </div>
                 )}
 
                 <form onSubmit={handleSignup} className="space-y-5" noValidate>
-                    <div>
-                        <label htmlFor="user_name" className="sr-only">Full Name</label>
-                        <input
-                            id="user_name"
-                            type="text"
-                            name="user_name"
-                            placeholder="Full Name"
-                            value={formData.user_name}
-                            onChange={handleChange}
-                            required
-                            autoComplete="name"
-                            maxLength={100}
-                            disabled={isLoading}
-                            className={inputClass}
-                        />
-                    </div>
+                    {/* Full Name */}
+                    <input
+                        type="text"
+                        name="user_name"
+                        placeholder="Full Name"
+                        value={formData.user_name}
+                        onChange={handleChange}
+                        required
+                        maxLength={100}
+                        disabled={isLoading}
+                        className={inputClass}
+                    />
 
-                    <div>
-                        <label htmlFor="identifier" className="sr-only">Email or Phone Number</label>
-                        <input
-                            id="identifier"
-                            type="text"
-                            name="identifier"
-                            placeholder="Email or Phone Number"
-                            value={formData.identifier}
-                            onChange={handleChange}
-                            required
-                            autoComplete="email"
-                            maxLength={254}
-                            disabled={isLoading}
-                            className={inputClass}
-                        />
-                    </div>
+                    {/* Email or Phone */}
+                    <input
+                        type="text"
+                        name="identifier"
+                        placeholder="Email or Phone Number"
+                        value={formData.identifier}
+                        onChange={handleChange}
+                        required
+                        maxLength={254}
+                        disabled={isLoading}
+                        className={inputClass}
+                    />
 
-                    <div>
-                        <label htmlFor="password" className="sr-only">Password</label>
+                    {/* Password */}
+                    <div className="relative">
                         <input
-                            id="password"
-                            type="text"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="Password"
                             value={formData.password}
                             onChange={handleChange}
                             required
-                            autoComplete="new-password"
                             maxLength={128}
                             disabled={isLoading}
-                            className={inputClass}
+                            className={`${inputClass} pr-12`}
                         />
+
+                        <span
+                            className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                            onClick={() => setShowPassword((s) => !s)}
+                        >
+                            <EyeIcon open={showPassword} />
+                        </span>
                     </div>
 
-                    <div>
-                        <label htmlFor="confirmPassword" className="sr-only">Confirm Password</label>
+                    {/* Confirm Password */}
+                    <div className="relative">
                         <input
-                            id="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? "text" : "password"}
                             name="confirmPassword"
                             placeholder="Confirm Password"
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             required
-                            autoComplete="new-password"
                             maxLength={128}
                             disabled={isLoading}
-                            className={inputClass}
+                            className={`${inputClass} pr-12`}
                         />
+
+                        <span
+                            className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                            onClick={() => setShowConfirmPassword((s) => !s)}
+                        >
+                            <EyeIcon open={showConfirmPassword} />
+                        </span>
                     </div>
 
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-lg disabled:opacity-50"
                     >
                         {isLoading ? "REGISTERING…" : "REGISTER NOW"}
                     </button>
@@ -195,10 +209,7 @@ function SignupPage() {
 
                 <p className="mt-6 text-center text-gray-600">
                     Already have an account?{" "}
-                    <Link
-                        to="/login"
-                        className="text-teal-700 font-bold hover:underline"
-                    >
+                    <Link to="/login" className="text-teal-700 font-bold hover:underline">
                         Login
                     </Link>
                 </p>

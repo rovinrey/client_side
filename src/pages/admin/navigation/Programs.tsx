@@ -128,6 +128,7 @@ const Programs = () => {
         }
     };
 
+    // Open modal for creating a new program
     const createProgram = () => {
         setEditingProgram(null);
         setFormData({

@@ -35,6 +35,7 @@ import ProgramAttendance from './pages/admin/navigation/ProgramAttendance';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import StaffApplications from './pages/staff/StaffApplications';
 import StaffApplicationDetails from './pages/staff/StaffApplicationDetails';
+import StaffProgramPage from './pages/staff/StaffProgrampage';
 
 // 1. Create an Admin Layout so the Sidebar is persistent
 // 1. Create an Admin Layout with a FIXED Sidebar
@@ -162,7 +163,7 @@ function App() {
           <Route path="/staff/beneficiaries" element={<Beneficiaries />} />
           <Route path="/staff/attendance" element={<AttendancePage />} />
           <Route path="/staff/payment" element={<Payment />} />
-          <Route path="/staff/programs" element={<Programs />} />
+          <Route path="/staff/programs" element={<StaffProgramPage />} />
           <Route path="/staff/programs/attendance" element={<ProgramAttendance />} />
           <Route path="/staff/documents-review" element={<DocumentsReview />} />
           <Route path="/staff/reports" element={<Reports />} />

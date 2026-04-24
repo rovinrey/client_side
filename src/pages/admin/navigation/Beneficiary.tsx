@@ -7,7 +7,6 @@ import axios from "axios";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface Beneficiary {
     beneficiary_id: number;
     user_id: number | null;
