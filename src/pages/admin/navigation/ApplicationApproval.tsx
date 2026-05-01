@@ -21,7 +21,7 @@ interface Application {
 
 const ApplicationApproval = () => {
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+const token = sessionStorage.getItem('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(false);
@@ -47,13 +47,13 @@ const ApplicationApproval = () => {
         fetchApplications();
     }, [selectedFilter, selectedProgram]);
 
-    const role = localStorage.getItem('role');
+const role = sessionStorage.getItem('role');
 
     const handleUnauthorized = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('user_name');
-        localStorage.removeItem('user_id');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('role');
+        sessionStorage.removeItem('user_name');
+        sessionStorage.removeItem('user_id');
         navigate('/login');
     };
 

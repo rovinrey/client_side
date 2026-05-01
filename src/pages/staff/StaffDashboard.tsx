@@ -18,7 +18,7 @@ interface Application {
 }
 
 export default function StaffDashboard() {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     const [stats, setStats] = useState({

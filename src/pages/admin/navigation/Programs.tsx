@@ -96,8 +96,8 @@ const Programs = () => {
         navigate(`${basePath}?program=${encodeURIComponent(filterValue)}&name=${encodeURIComponent(programName)}`);
     };
 
-    const getAuthHeaders = () => {
-        const token = localStorage.getItem("token");
+const getAuthHeaders = () => {
+        const token = sessionStorage.getItem("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
 

@@ -38,7 +38,7 @@
             setError(null);
 
             // 1. Get token and create headers INSIDE the callback
-            const token = localStorage.getItem("token");
+const token = sessionStorage.getItem("token");
             const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
             try {

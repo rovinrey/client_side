@@ -183,9 +183,9 @@ function BeneficiaryRequirements() {
     // ── Application submission status (for online form items) ────────────────
     const [submissions, set_submissions] = useState<ApplicationSubmission[]>([]);
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        const user_id = localStorage.getItem('user_id');
+useEffect(() => {
+        const token = sessionStorage.getItem('token');
+        const user_id = sessionStorage.getItem('user_id');
         if (!token || !user_id) return;
 applicationStatusAPI.getStatus(user_id, token)
             .then((data) => set_submissions(data.submissions ?? []))

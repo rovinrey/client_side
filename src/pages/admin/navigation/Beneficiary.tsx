@@ -58,7 +58,7 @@ const BeneficiaryManagement = () => {
 
   // Helper for Auth Headers
   const getAuthHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`
+Authorization: `Bearer ${sessionStorage.getItem('token')}`
   });
 
   // --- Data Fetching Logic ---

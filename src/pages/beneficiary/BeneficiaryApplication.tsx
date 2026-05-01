@@ -122,11 +122,11 @@ setProgramsLoading(true);
             .finally(() => setProgramsLoading(false));
     }, [activeProgram, location.state]);
 
-    useEffect(() => {
+useEffect(() => {
         const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            const role = localStorage.getItem('role');
-            const userId = localStorage.getItem('user_id');
+            const token = sessionStorage.getItem('token');
+            const role = sessionStorage.getItem('role');
+            const userId = sessionStorage.getItem('user_id');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');
@@ -144,7 +144,7 @@ setProgramsLoading(true);
                 if (profileRes.status === 'fulfilled') {
                     setUser(profileRes.value.data);
                 } else if (profileRes.reason?.response?.status === 401) {
-                    localStorage.clear();
+                    sessionStorage.clear();
                     navigate('/login');
                     return;
                 }
