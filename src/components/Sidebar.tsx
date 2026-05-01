@@ -5,7 +5,8 @@ import {
   ClipboardList, 
   BarChart3, 
   FileCheck,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { logout as clearAuth } from '../utils/auth';
 import { API_BASE_URL } from '../api/config';
@@ -13,13 +14,14 @@ import { API_BASE_URL } from '../api/config';
 
 function Sidebar() { 
 
-    // menus 
+// menus 
     const menuItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} />, exact: true },
         { name: "Programs", path: "/programs", icon: <ClipboardList size={18} />, exact: true },
         { name: "Applications", path: "/applications", icon: <FileCheck size={18} />, exact: true },
         { name: "Payment", path: "/payment", icon: <CreditCard size={18} />, exact: true },
         { name: "Reports", path: "/reports", icon: <BarChart3 size={18} />, exact: true },
+        { name: "User Management", path: "/users", icon: <Users size={18} />, exact: true },
     ];
 
     const navigate = useNavigate();

@@ -24,6 +24,7 @@ import StaffSidebar from './components/StaffSidebar';
 
 import AdminDashboard from './pages/admin/navigation/AdminDashboard';
 import Beneficiaries from './pages/admin/navigation/Beneficiary';
+import UserManagement from './pages/admin/navigation/UserManagement';
 import Programs from './pages/admin/navigation/Programs';
 import Payment from './pages/admin/navigation/Payment'
 import Reports from './pages/admin/navigation/Reports';
@@ -135,10 +136,11 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* All these paths will now show the Sidebar */}
+{/* All these paths will now show the Sidebar */}
           <Route path="/dashboard" element={<AdminDashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/beneficiaries" element={<Beneficiaries />} />
+          <Route path="/users" element={<UserManagement />} />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/programs/attendance" element={<ProgramAttendance />} />
