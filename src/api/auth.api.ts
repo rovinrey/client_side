@@ -9,7 +9,7 @@ export interface CreateUserData {
 }
 
 export const createUser = async (userData: CreateUserData): Promise<{ message: string }> => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     
     const response = await axios.post(
         `${API_BASE_URL}/api/auth/create-user`,

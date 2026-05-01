@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
   // 1. Get the stored user data and role
-  const userRole = localStorage.getItem('role');
+const userRole = sessionStorage.getItem('role');
   
   // 2. If no role exists, the user isn't logged in
   if (!userRole) {
