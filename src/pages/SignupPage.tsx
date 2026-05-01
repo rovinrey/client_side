@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../api/config";
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 function SignupPage() {
     const navigate = useNavigate();
@@ -49,6 +50,10 @@ function SignupPage() {
 
         if (formData.password.length < 8) {
             return "Password must be at least 8 characters long.";
+        }
+
+        if (!PASSWORD_REGEX.test(formData.password)) {
+            return "Password must include uppercase, lowercase, number, and special character.";
         }
 
         if (formData.password !== formData.confirmPassword) {
@@ -154,11 +159,11 @@ function SignupPage() {
                         className={inputClass}
                     />
 
-                    {/* Password */}
+{/* Password */}
                     <div className="relative">
                         <input
                             type={showPassword ? "text" : "password"}
-                            name="text"
+                            name="password"
                             placeholder="Password"
                             value={formData.password}
                             onChange={handleChange}

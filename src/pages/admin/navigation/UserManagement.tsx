@@ -9,7 +9,14 @@ import {
   EyeIcon,
   EyeOff,
 } from 'lucide-react';
-import { createUser, CreateUserData } from '../../../api/auth.api';
+import { createUser } from '../../../api/auth.api';
+
+interface CreateUserData {
+  user_name: string;
+  identifier: string;
+  password: string;
+  role: 'admin' | 'staff';
+}
 
 const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;

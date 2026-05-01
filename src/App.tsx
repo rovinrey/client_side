@@ -26,7 +26,7 @@ import AdminDashboard from './pages/admin/navigation/AdminDashboard';
 import Beneficiaries from './pages/admin/navigation/Beneficiary';
 import UserManagement from './pages/admin/navigation/UserManagement';
 import Programs from './pages/admin/navigation/Programs';
-import Payment from './pages/admin/navigation/Payment'
+import Payment from './pages/admin/navigation/Payment';
 import Reports from './pages/admin/navigation/Reports';
 import AttendancePage from './pages/admin/navigation/Attendance';
 import ApplicationApproval from './pages/admin/navigation/ApplicationApproval';
