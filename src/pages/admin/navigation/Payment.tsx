@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from '../../../api/config';
 import {
     Banknote,
     Calendar,
@@ -15,7 +13,6 @@ import {
     Plus,
     RefreshCw,
     Smartphone,
-    Wallet,
     X
 } from "lucide-react";
 import {
@@ -26,8 +23,11 @@ import {
     createDisbursement,
     getDisbursements,
     updateDisbursementStatus,
+    setDailyWage,
+    getAllDailyWages,
     type PayrollResponse,
     type Disbursement,
+    type DailyWageSettings,
 } from '../../../api/payroll.api';
 
 const PROGRAM_LABELS: Record<string, string> = {
@@ -84,8 +84,6 @@ const KpiCard = ({ label, value, sub }: { label: string; value: string; sub: str
 );
 
 const PaymentPage = () => {
-    const token = localStorage.getItem("token");
-
     const [month, setMonth] = useState<string>(toMonthInputDefault());
     const [programFilter, setProgramFilter] = useState<string>("all");
     const [loading, setLoading] = useState<boolean>(true);
@@ -93,9 +91,12 @@ const PaymentPage = () => {
     const [payroll, setPayroll] = useState<PayrollResponse | null>(null);
     const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
 
-    const [editingWage, setEditingWage] = useState(false);
-    const [wageInput, setWageInput] = useState("");
-    const [savingWage, setSavingWage] = useState(false);
+    // Daily wage settings state
+    const [dailyWages, setDailyWages] = useState<DailyWageSettings>({});
+    const [editingProgramWage, setEditingProgramWage] = useState<string | null>(null);
+    const [programWageInput, setProgramWageInput] = useState("");
+    const [savingProgramWage, setSavingProgramWage] = useState(false);
+    const [wagesLoading, setWagesLoading] = useState(true);
 
     const [generating, setGenerating] = useState(false);
     const [approving, setApproving] = useState(false);
@@ -111,6 +112,25 @@ const PaymentPage = () => {
         notes: "",
     });
     const [disCreating, setDisCreating] = useState(false);
+
+    // Fetch daily wage settings
+    const fetchDailyWages = useCallback(async () => {
+        setWagesLoading(true);
+        try {
+            const wages = await getAllDailyWages();
+            setDailyWages(wages);
+        } catch (err) {
+            console.error("Failed to load daily wages:", err);
+            // Set defaults if fetch fails
+            setDailyWages({ tupad: 435, spes: 435, dilp: 435, gip: 435, job_seekers: 435 });
+        } finally {
+            setWagesLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDailyWages();
+    }, [fetchDailyWages]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -185,7 +205,7 @@ const PaymentPage = () => {
         }
     };
 
-    const handleRelease = async () => {
+const handleRelease = async () => {
         setReleasing(true);
         try {
             const prog = programFilter === "all" ? undefined : programFilter;
@@ -198,27 +218,31 @@ const PaymentPage = () => {
         }
     };
 
-    const openWageEditor = () => {
-        setWageInput(String(payroll?.dailyWage || 435));
-        setEditingWage(true);
+    // Open the program-specific wage editor
+    const openProgramWageEditor = (programType: string, currentWage: number) => {
+        setEditingProgramWage(programType);
+        setProgramWageInput(String(currentWage || 435));
     };
 
-    const saveWage = async () => {
-        const parsed = parseFloat(wageInput);
-        if (isNaN(parsed) || parsed <= 0) return;
-        setSavingWage(true);
+    const cancelProgramWageEdit = () => {
+        setEditingProgramWage(null);
+        setProgramWageInput("");
+    };
+
+    // Save the per-program daily wage
+    const saveProgramWage = async () => {
+        const parsed = parseFloat(programWageInput);
+        if (isNaN(parsed) || parsed <= 0 || !editingProgramWage) return;
+        setSavingProgramWage(true);
         try {
-            await axios.put(
-                `${API_BASE_URL}/api/applications/settings/daily-wage`,
-                { daily_wage: parsed },
-                { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-            );
-            setEditingWage(false);
-            await fetchData();
+            await setDailyWage(editingProgramWage, parsed);
+            cancelProgramWageEdit();
+            await fetchDailyWages();
+            await fetchData(); // Refresh payroll with new wages
         } catch (err: any) {
             setError(err?.response?.data?.message || "Failed to update daily wage.");
         } finally {
-            setSavingWage(false);
+            setSavingProgramWage(false);
         }
     };
 
@@ -317,13 +341,87 @@ const PaymentPage = () => {
                 </div>
             </section>
 
-            {/* KPI Cards */}
+{/* KPI Cards */}
             <section className="grid grid-cols-2 gap-4 md:grid-cols-5">
                 <KpiCard label="Payroll Total" value={formatPeso(payroll?.totals?.total_payout || 0)} sub="All programs combined" />
                 <KpiCard label="Beneficiaries" value={String(payroll?.records?.length || 0)} sub="In current payroll" />
                 <KpiCard label="Avg. Days" value={String(avgDaysWorked)} sub="Per beneficiary" />
                 <KpiCard label="Period" value={reportLabel} sub="Selected month" />
                 <KpiCard label="Programs" value={String(programs.length)} sub="With active payroll" />
+            </section>
+
+            {/* Daily Wage Settings - Per Program */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold text-slate-900">Daily Wage Settings</h2>
+                        <p className="text-sm text-slate-500">Configure daily wage rate per program</p>
+                    </div>
+                </div>
+
+                {wagesLoading ? (
+                    <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+                        <Loader2 size={16} className="animate-spin" /> Loading wage settings...
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        {Object.entries(PROGRAM_LABELS).map(([programKey, programLabelText]) => {
+                            const currentWage = dailyWages[programKey] || 435;
+                            const isEditing = editingProgramWage === programKey;
+                            return (
+                                <div key={programKey} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{programLabelText}</p>
+                                    {isEditing ? (
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs font-semibold text-slate-600">₱</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="0.01"
+                                                value={programWageInput}
+                                                onChange={(e) => setProgramWageInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") saveProgramWage();
+                                                    if (e.key === "Escape") cancelProgramWageEdit();
+                                                }}
+                                                className="w-full rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-400"
+                                                autoFocus
+                                                disabled={savingProgramWage}
+                                            />
+                                            <button
+                                                onClick={saveProgramWage}
+                                                disabled={savingProgramWage}
+                                                className="rounded-lg bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 disabled:opacity-50"
+                                                title="Save"
+                                            >
+                                                <Check size={14} />
+                                            </button>
+                                            <button
+                                                onClick={cancelProgramWageEdit}
+                                                disabled={savingProgramWage}
+                                                className="rounded-lg bg-slate-200 p-1.5 text-slate-600 hover:bg-slate-300"
+                                                title="Cancel"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-lg font-bold text-slate-900">{formatPeso(currentWage)}</span>
+                                            <button
+                                                onClick={() => openProgramWageEditor(programKey, currentWage)}
+                                                className="p-1 text-amber-600 hover:bg-amber-100 rounded-lg"
+                                                title="Edit wage"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </section>
 
             {/* Program Breakdown */}
@@ -345,7 +443,7 @@ const PaymentPage = () => {
                     <div>
                         <h2 className="text-xl font-semibold text-slate-900">Payroll Records</h2>
                         <p className="text-sm text-slate-500">
-                            {reportLabel} · Formula: Days × {formatPeso(payroll?.dailyWage || 435)}
+                            {reportLabel}
                             {pendingCount > 0 && <span className="ml-2 text-amber-600 font-semibold">({pendingCount} pending)</span>}
                             {approvedCount > 0 && <span className="ml-2 text-blue-600 font-semibold">({approvedCount} approved)</span>}
                             {releasedCount > 0 && <span className="ml-2 text-emerald-600 font-semibold">({releasedCount} released)</span>}
@@ -353,24 +451,6 @@ const PaymentPage = () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        {editingWage ? (
-                            <div className="inline-flex items-center gap-1.5">
-                                <span className="text-xs font-semibold text-slate-600">₱</span>
-                                <input type="number" min="1" step="0.01" value={wageInput}
-                                    onChange={(e) => setWageInput(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === "Enter") saveWage(); if (e.key === "Escape") setEditingWage(false); }}
-                                    className="w-28 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-400"
-                                    autoFocus disabled={savingWage} />
-                                <button onClick={saveWage} disabled={savingWage} className="rounded-lg bg-emerald-600 p-1.5 text-white hover:bg-emerald-700 disabled:opacity-50"><Check size={14} /></button>
-                                <button onClick={() => setEditingWage(false)} disabled={savingWage} className="rounded-lg bg-slate-200 p-1.5 text-slate-600 hover:bg-slate-300"><X size={14} /></button>
-                            </div>
-                        ) : (
-                            <button onClick={openWageEditor}
-                                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer">
-                                <Wallet size={14} /> Daily Wage: {formatPeso(payroll?.dailyWage || 435)} <Pencil size={12} className="text-amber-600" />
-                            </button>
-                        )}
-
                         {pendingCount > 0 && (
                             <button onClick={handleApprove} disabled={approving}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60">

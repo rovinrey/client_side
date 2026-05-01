@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { LayoutGrid, Clock, AlertCircle, CheckCircle2, Clock3, User } from "lucide-react";
+import { LayoutGrid, Clock, CheckCircle2, Clock3 } from "lucide-react";
 import { API_BASE_URL } from '../../api/config';
 
 import TupadForm from "./forms/TUPADform";
-import SpesForm from "./forms/SpesOfficialForms";
+import SpesForm from "./forms/SPES/SpesOfficialForms";
 import DilpForm from "./forms/DILPform";
 import GIPform from "./forms/GIPform";
 import JobSeekerForm from "./forms/JobseekersForm";
-import SPESDocumentsModule from "../../components/SPESDocumentsModule";
+import SPESDocumentsModule from "./forms/SPES/SPESDocumentsModule";
 import DocumentUploadModule, { type RequirementDef } from "../../components/DocumentUploadModule";
 import ApplicationStatusPanel from "../../components/ApplicationStatusPanel";
 import RequirementStatusBanner from "../../components/RequirementStatusBanner";
@@ -62,7 +62,7 @@ function BeneficiaryApplication() {
     const location = useLocation();
     
     // Auth & Profile State
-    const [user, setUser] = useState<any>(null);
+    const [ ,setUser] = useState<any>(null);
     const [, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -77,7 +77,7 @@ function BeneficiaryApplication() {
 
     // Submissions & Batch Selection
     const [submissions, setSubmissions] = useState<ApplicationSubmission[]>([]);
-    const [activePrograms, setActivePrograms] = useState<ActiveProgram[]>([]);
+    const [, setActivePrograms] = useState<ActiveProgram[]>([]);
     const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
     const [programsLoading, setProgramsLoading] = useState(false);
 
@@ -103,7 +103,7 @@ function BeneficiaryApplication() {
         const apiKey = PROGRAM_API_KEY[activeProgram];
         const navProgramId = (location.state as { programId?: number } | null)?.programId;
         
-        setProgramsLoading(true);
+setProgramsLoading(true);
         programsAPI.getActiveByType(apiKey)
             .then((programs) => {
                 setActivePrograms(programs);
@@ -115,7 +115,10 @@ function BeneficiaryApplication() {
                     setSelectedProgramId(null);
                 }
             })
-            .catch(() => setActivePrograms([]))
+            .catch((err) => {
+                console.error('Failed to load active programs:', err);
+                setActivePrograms([]);
+            })
             .finally(() => setProgramsLoading(false));
     }, [activeProgram, location.state]);
 
@@ -178,14 +181,6 @@ function BeneficiaryApplication() {
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Application Portal</h1>
                     <p className="text-sm text-gray-500">Manage your program applications and document status.</p>
                 </div>
-                {user && (
-                    <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-2 ring-1 ring-inset ring-teal-200">
-                        <User className="h-4 w-4 text-teal-600" />
-                        <span className="text-sm font-bold text-teal-800">
-                            {user.first_name || user.user_name}
-                        </span>
-                    </div>
-                )}
             </header>
 
             <main className="rounded-2xl border border-gray-100 bg-white shadow-md overflow-hidden">
@@ -232,36 +227,9 @@ function BeneficiaryApplication() {
                                         ))}
                                     </select>
                                 </div>
-
-                                {!programsLoading && activePrograms.length > 0 && (
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Available Batch</label>
-                                        <select
-                                            value={selectedProgramId ?? ''}
-                                            onChange={(e) => setSelectedProgramId(e.target.value ? Number(e.target.value) : null)}
-                                            className="w-full rounded-xl border-gray-200 bg-gray-50 p-3.5 text-sm font-bold focus:ring-4 focus:ring-teal-500/10 outline-none transition-all cursor-pointer"
-                                        >
-                                            <option value="">— Select a Specific Batch —</option>
-                                            {activePrograms.map((p) => (
-                                                <option key={p.program_id} value={p.program_id}>
-                                                    {p.program_name} ({p.filled}/{p.slots} slots)
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Warnings */}
-                            {!programsLoading && activePrograms.length === 0 && (
-                                <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-5 flex gap-4 items-start">
-                                    <AlertCircle className="text-amber-500 flex-shrink-0" size={20} />
-                                    <div>
-                                        <h4 className="text-sm font-bold text-amber-900">Program Currently Unavailable</h4>
-                                        <p className="text-xs text-amber-700 mt-1">We aren't accepting applications for {activeProgram} at this time. Please check back later.</p>
-                                    </div>
-                                </div>
-                            )}
+                            
 
                             {/* Sub-Tabs */}
                             <div className="flex gap-2 mb-10 bg-gray-100/80 p-1.5 rounded-2xl w-fit">
@@ -283,7 +251,14 @@ function BeneficiaryApplication() {
                             {/* Dynamic Content */}
                             {subTab === 'form' && (
                                 <section>
-                                    {existingApplication ? (
+                                    {programsLoading ? (
+                                        <div className="flex items-center justify-center py-24">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />
+                                                <span className="text-sm text-gray-400 font-medium">Loading programs...</span>
+                                            </div>
+                                        </div>
+                                    ) : existingApplication ? (
                                         <div className={`p-10 rounded-3xl border-2 border-dashed flex flex-col items-center text-center ${
                                             existingApplication.status === 'Approved' ? 'bg-emerald-50 border-emerald-100' : 'bg-teal-50/50 border-teal-100'
                                         }`}>

@@ -158,7 +158,7 @@ function SignupPage() {
                     <div className="relative">
                         <input
                             type={showPassword ? "text" : "password"}
-                            name="password"
+                            name="text"
                             placeholder="Password"
                             value={formData.password}
                             onChange={handleChange}

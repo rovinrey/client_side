@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../api/config';
 import WelcomeBanner from "../../components/Welcomebanner";
 import RequirementsSubmissionModule from "../../components/RequirementsSubmissionModule";
 import { getNotifications, markNotificationAsRead, type Notification } from '../../api/notifications.api';
+import { programsAPI, type ActiveProgram } from '../../api/programs.api';
 import { type ProgramKey } from '../../constants/beneficiaryPrograms';
 
 const PROGRAM_NAME_TO_KEY: Record<string, ProgramKey> = {
@@ -23,13 +24,26 @@ function BeneficiaryDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [readyPrograms, setReadyPrograms] = useState<ActiveProgram[]>([]);
+    const [readyLoading, setReadyLoading] = useState(true);
 
-    const fetchNotifications = useCallback(async () => {
+const fetchNotifications = useCallback(async () => {
         try {
             const data = await getNotifications(10);
             setNotifications(data);
-        } catch {
-            // silent fail — notifications are non-critical
+        } catch (err) {
+            console.error('Failed to load notifications:', err);
+        }
+    }, []);
+
+const fetchReadyPrograms = useCallback(async () => {
+        try {
+            const programs = await programsAPI.getReadyPrograms();
+            setReadyPrograms(programs);
+        } catch (err) {
+            console.error('Failed to load ready programs:', err);
+        } finally {
+            setReadyLoading(false);
         }
     }, []);
 
@@ -64,7 +78,8 @@ function BeneficiaryDashboard() {
 
         fetchDashboardData();
         fetchNotifications();
-    }, [navigate, fetchNotifications]);
+        fetchReadyPrograms();
+    }, [navigate, fetchNotifications, fetchReadyPrograms]);
 
     if (loading) {
         return (
@@ -131,6 +146,7 @@ function BeneficiaryDashboard() {
         program_ongoing: { icon: Megaphone, color: 'text-blue-600', bg: 'bg-blue-50', label: 'Ongoing' },
         program_coming_soon: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', label: 'Coming Soon' },
         program_completed: { icon: CheckCircle2, color: 'text-gray-500', bg: 'bg-gray-50', label: 'Completed' },
+        program_ready: { icon: Rocket, color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Ready to Apply' },
         general: { icon: Info, color: 'text-teal-600', bg: 'bg-teal-50', label: 'Announcement' },
     };
 
@@ -142,6 +158,57 @@ function BeneficiaryDashboard() {
             </div>
 
             <main className="pb-8 md:pb-12 w-full px-1 sm:px-2 md:px-4 lg:px-8 max-w-7xl mx-auto mt-4 space-y-6">
+                {/* Ready Programs Section */}
+                {!readyLoading && readyPrograms.length > 0 && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-6 rounded-2xl shadow-sm border border-emerald-200">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                                <Rocket className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Ready Programs</h2>
+                                <p className="text-sm text-emerald-700">Apply now – these programs are accepting applicants</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {readyPrograms.map((program) => (
+                                <div
+                                    key={program.program_id}
+                                    className="group bg-white p-5 rounded-xl border border-gray-200 hover:shadow-md hover:border-emerald-300 transition-all duration-200 cursor-pointer"
+                                    onClick={() => navigate('/beneficiary/application', { state: { programId: program.program_id } })}
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <h3 className="font-bold text-lg text-gray-900 line-clamp-1 pr-4">{program.program_name}</h3>
+                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold uppercase rounded-full tracking-wide">
+                                            {program.slots - (program.filled || 0)} slots
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{program.location}</p>
+                                    {program.start_date && (
+                                        <p className="text-xs text-gray-500 mb-4">
+                                            Starts {new Date(program.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </p>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 bg-gray-100 rounded-full h-2">
+                                            <div 
+                                                className="bg-emerald-500 h-2 rounded-full transition-all" 
+                                                style={{ width: `${Math.min(100, ((program.filled || 0) / program.slots) * 100)}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-sm font-semibold text-gray-900">
+                                            {program.filled || 0}/{program.slots}
+                                        </span>
+                                    </div>
+                                    <button className="w-full mt-4 bg-emerald-600 text-white py-2.5 px-4 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors group-hover:shadow-lg">
+                                        Apply Now →
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Program Announcements */}
                 {notifications.length > 0 && (
                     <div className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl shadow-sm border border-gray-200">
@@ -188,12 +255,13 @@ function BeneficiaryDashboard() {
                         </div>
                     </div>
                 )}
-
+                
                 {/* Requirements Submission */}
                 <div className="bg-white p-4 sm:p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
                     <h2 className="text-lg font-bold text-gray-900 mb-4">Requirements Submission Progress</h2>
                     <RequirementsSubmissionModule compact />
                 </div>
+                
             </main>
         </div>
     );

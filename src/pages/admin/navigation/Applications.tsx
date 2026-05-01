@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Download } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { API_BASE_URL } from '../../../api/config';
 
 interface Application {
@@ -21,6 +21,7 @@ function Applications() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<string>("All");
+    const [searchQuery, setSearchQuery] = useState<string>("");
 
     const programFilters = ["All", "TUPAD", "SPES", "DILP", "GIP", "Jobseeker"];
 
@@ -41,14 +42,22 @@ function Applications() {
         }
     };
 
-    const filteredApps = filter === "All" ? apps : apps.filter(app => app.program_type === filter);
+    const filteredApps = apps.filter(app => {
+        const matchesProgram = filter === "All" || app.program_type === filter;
+        const searchLower = searchQuery.toLowerCase();
+
+        const matchesSearch =
+            app.first_name.toLowerCase().includes(searchLower) ||
+            app.last_name.toLowerCase().includes(searchLower) ||
+            (app.user_id?.toString() || '').includes(searchLower);
+
+        return matchesProgram && matchesSearch;
+    });
 
     const handleExport = async () => {
         try {
             const params = new URLSearchParams();
-            if (filter !== 'All') {
-                params.append('programType', filter);
-            }
+            if (filter !== 'All') params.append('programType', filter);
 
             const query = params.toString();
             const url = `${API_BASE_URL}/api/applications/export${query ? `?${query}` : ''}`;
@@ -80,25 +89,42 @@ function Applications() {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm"
                 >
                     <Download size={16} />
-                    Export {filter === 'All' ? 'All' : filter} to Excel
+                    Export {filter === 'All' ? 'All' : filter}
                 </button>
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
-                {programFilters.map((program) => (
-                    <button
-                        key={program}
-                        onClick={() => setFilter(program)}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                            filter === program
-                                ? 'bg-teal-600 border-teal-600 text-white'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                        {program}
-                    </button>
-                ))}
+            {/* Filter + Search Row */}
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                    {programFilters.map((program) => (
+                        <button
+                            key={program}
+                            onClick={() => setFilter(program)}
+                            className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                                filter === program
+                                    ? 'bg-teal-600 border-teal-600 text-white'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            {program}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative sm:ml-auto">
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search by name or User ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm"
+                    />
+                </div>
             </div>
+
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
@@ -118,17 +144,25 @@ function Applications() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredApps.map(app => (
-                                <tr key={`${app.program_type}-${app.id}`} className="border-t border-gray-100">
-                                    <td className="px-4 py-3">{app.user_id ?? 'N/A'}</td>
-                                    <td className="px-4 py-3">{app.first_name} {app.middle_name ? app.middle_name + ' ' : ''}{app.last_name}</td>
-                                    <td className="px-4 py-3">{app.program_type}</td>
-                                    <td className="px-4 py-3">{app.contact_number || '-'}</td>
-                                    <td className="px-4 py-3">{app.address || '-'}</td>
-                                    <td className="px-4 py-3">{new Date(app.applied_at).toLocaleDateString()}</td>
-                                    <td className="px-4 py-3">{app.status}</td>
+                            {filteredApps.length > 0 ? (
+                                filteredApps.map(app => (
+                                    <tr key={`${app.program_type}-${app.id}`} className="border-t border-gray-100">
+                                        <td className="px-4 py-3">{app.user_id ?? 'N/A'}</td>
+                                        <td className="px-4 py-3">{app.first_name} {app.middle_name ? app.middle_name + ' ' : ''}{app.last_name}</td>
+                                        <td className="px-4 py-3">{app.program_type}</td>
+                                        <td className="px-4 py-3">{app.contact_number || '-'}</td>
+                                        <td className="px-4 py-3">{app.address || '-'}</td>
+                                        <td className="px-4 py-3">{new Date(app.applied_at).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3">{app.status}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                        No applications found matching your criteria.
+                                    </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>

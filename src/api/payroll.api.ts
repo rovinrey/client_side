@@ -174,3 +174,25 @@ export const getMyPayouts = async (): Promise<{ records: BeneficiaryPayout[]; to
     });
     return data;
 };
+
+// ── Daily wage management ───────────────────────────
+
+export interface DailyWageSettings {
+    [programType: string]: number;
+}
+
+export const setDailyWage = async (programType: string | null, wage: number) => {
+    const { data } = await axios.post(
+        `${API_BASE_URL}/api/payroll/daily-wage`,
+        { program_type: programType, wage },
+        { headers: getAuthHeaders() }
+    );
+    return data as { message: string; program_type: string | null; daily_wage: number };
+};
+
+export const getAllDailyWages = async (): Promise<DailyWageSettings> => {
+    const { data } = await axios.get(`${API_BASE_URL}/api/payroll/daily-wage`, {
+        headers: getAuthHeaders(),
+    });
+    return data;
+};

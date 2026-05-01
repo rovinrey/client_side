@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, XCircle, Loader } from "lucide-react";
+import { CheckCircle, XCircle, Loader, Search, UserCheck } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
+import EnrollmentModal from '../../../components/EnrollmentModal';
 
 interface Application {
     id: number;
@@ -14,6 +15,8 @@ interface Application {
     address: string | null;
     status: string;
     applied_at: string;
+    is_enrolled?: boolean; // NEW: Track enrollment status
+    enrollment_program_id?: number; // NEW: Track which program they're enrolled in
 }
 
 const ApplicationApproval = () => {
@@ -24,8 +27,12 @@ const ApplicationApproval = () => {
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [processingId, setProcessingId] = useState<number | null>(null);
+    const [enrollingId, setEnrollingId] = useState<number | null>(null); // NEW: Track enrolling state
     const [selectedFilter, setSelectedFilter] = useState("Pending");
     const [selectedProgram, setSelectedProgram] = useState("all");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
+    const [selectedApplicationForEnrollment, setSelectedApplicationForEnrollment] = useState<Application | null>(null);
 
     const programOptions = [
         { label: "All", value: "all" },
@@ -36,7 +43,6 @@ const ApplicationApproval = () => {
         { label: "Jobseeker", value: "jobseeker" },
     ];
 
-    // Fetch applications on component mount
     useEffect(() => {
         fetchApplications();
     }, [selectedFilter, selectedProgram]);
@@ -51,13 +57,13 @@ const ApplicationApproval = () => {
         navigate('/login');
     };
 
-    const fetchApplications = async () => {
+    const fetchApplications = async () => {      
         setLoading(true);
         try {
             const endpoint =
                 selectedFilter === "Pending"
-                    ? `${API_BASE_URL}/api/applications/applications/pending`
-                    : `${API_BASE_URL}/api/applications/applications`;
+                    ? `${API_BASE_URL}/api/applications/pending`
+                    : `${API_BASE_URL}/api/applications`;
 
             const params: Record<string, string> = {};
             if (selectedFilter !== "Pending") {
@@ -71,6 +77,7 @@ const ApplicationApproval = () => {
                 headers: authHeaders,
                 params,
             });
+            
             setApplications(response.data);
         } catch (error: any) {
             console.error("Error fetching applications:", error);
@@ -134,20 +141,23 @@ const ApplicationApproval = () => {
         }
     };
 
+    // Approve application
     const handleApprove = async (applicationId: number) => {
         setProcessingId(applicationId);
         try {
             const response = await axios.put(
-                `${API_BASE_URL}/api/applications/applications/${applicationId}/approve`,
+                `${API_BASE_URL}/api/applications/${applicationId}/approve`,
                 {},
                 { headers: authHeaders }
             );
-            
+
             if (response.status === 200) {
-                const programType = response.data?.programType?.toUpperCase()?.replace('_', ' ') || 'program';
-                setApplications(applications.filter(app => app.id !== applicationId));
-                alert(`Application approved! Beneficiary has been enrolled in ${programType}.`);
-                fetchApplications();
+                const app = applications.find(a => a.id === applicationId);
+                if (app) {
+                    setSelectedApplicationForEnrollment(app);
+                    setEnrollmentModalOpen(true);
+                }
+                fetchApplications(); // Refresh the list
             }
         } catch (error: any) {
             console.error("Error approving application:", error);
@@ -161,17 +171,63 @@ const ApplicationApproval = () => {
         }
     };
 
-    const handleReject = async (applicationId: number) => {
-        const reason = prompt("Enter rejection reason (optional):");
-        setProcessingId(applicationId);
+    // FIXED: Handle enrollment completion with better state management
+    const handleEnrollmentComplete = async (programId: number) => {
+        if (!selectedApplicationForEnrollment) return;
+        
+        setEnrollingId(selectedApplicationForEnrollment.id);
         
         try {
-            const response = await axios.put(
-                `${API_BASE_URL}/api/applications/applications/${applicationId}/reject`,
-                { reason: reason || null },
+            // Call API to confirm enrollment
+            const response = await axios.post(
+                `${API_BASE_URL}/api/beneficiaries/enroll`,
+                { applicationId: selectedApplicationForEnrollment.id, programId },
                 { headers: authHeaders }
             );
             
+            if (response.status === 200) {
+                // Update local state to show "Enrolled" button
+                setApplications(prev => prev.map(app => 
+                    app.id === selectedApplicationForEnrollment.id 
+                        ? { 
+                            ...app, 
+                            is_enrolled: true, 
+                            enrollment_program_id: programId 
+                          }
+                        : app
+                ));
+                
+                // Show success message
+                alert(`✅ Successfully enrolled ${selectedApplicationForEnrollment.first_name} ${selectedApplicationForEnrollment.last_name} in the program!`);
+                
+                // Close modal
+                setEnrollmentModalOpen(false);
+                setSelectedApplicationForEnrollment(null);
+                
+                // Optional: Refresh the list after a short delay
+                setTimeout(() => {
+                    fetchApplications();
+                }, 1000);
+            }
+        } catch (error: any) {
+            console.error("Error completing enrollment:", error);
+            alert(error.response?.data?.message || "Failed to enroll beneficiary. Please try again.");
+        } finally {
+            setEnrollingId(null);
+        }
+    };
+
+    const handleReject = async (applicationId: number) => {
+        const reason = prompt("Enter rejection reason (optional):");
+        setProcessingId(applicationId);
+
+        try {
+        const response = await axios.put(
+            `${API_BASE_URL}/api/applications/${applicationId}/reject`,
+                { reason: reason || null },
+                { headers: authHeaders }
+            );
+
             if (response.status === 200) {
                 setApplications(applications.filter(app => app.id !== applicationId));
                 alert("Application rejected. The applicant has been notified.");
@@ -193,6 +249,17 @@ const ApplicationApproval = () => {
         navigate(`/applications/${applicationId}`);
     };
 
+    // Filter applications by search query
+    const filteredApplications = applications.filter(app => {
+        const searchLower = searchQuery.toLowerCase();
+        const fullName = `${app.first_name} ${app.middle_name ?? ''} ${app.last_name}`.toLowerCase();
+        return (
+            fullName.includes(searchLower) ||
+            app.contact_number.toLowerCase().includes(searchLower) ||
+            (app.address ?? '').toLowerCase().includes(searchLower)
+        );
+    });
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -201,22 +268,37 @@ const ApplicationApproval = () => {
                 <p className="text-gray-500 text-sm">Review and approve beneficiary applications</p>
             </div>
 
+            {/* Program Filter + Search + Export */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
-                        Program Filter
-                    </label>
-                    <select
-                        value={selectedProgram}
-                        onChange={(event) => setSelectedProgram(event.target.value)}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-teal-500"
-                    >
-                        {programOptions.map((program) => (
-                            <option key={program.value} value={program.value}>
-                                {program.label}
-                            </option>
-                        ))}
-                    </select>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                    {/* Program Filter */}
+                    <div>
+                        <select
+                            value={selectedProgram}
+                            onChange={(event) => setSelectedProgram(event.target.value)}
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-teal-500"
+                        >
+                            {programOptions.map((program) => (
+                                <option key={program.value} value={program.value}>
+                                    {program.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search beneficiary name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 outline-none focus:border-teal-500 w-64"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <button
@@ -253,34 +335,22 @@ const ApplicationApproval = () => {
             )}
 
             {/* Applications Table */}
-            {!loading && applications.length > 0 && (
+            {!loading && filteredApplications.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-gray-200">
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Applicant Name
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Program
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Contact
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Address
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
-                                        Actions
-                                    </th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applicant Name</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Program</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Contact</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Address</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {applications.map((app) => (
+                                {filteredApplications.map((app) => (
                                     <tr
                                         key={app.id}
                                         onClick={() => handleOpenApplicationDetails(app.id)}
@@ -297,14 +367,12 @@ const ApplicationApproval = () => {
                                             {app.first_name} {app.middle_name} {app.last_name}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.program_type}
+                                            <span className="px-2 py-1 bg-teal-50 text-teal-700 rounded-md text-xs font-medium">
+                                                {app.program_type.toUpperCase()}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.contact_number}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.address || '-'}
-                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{app.contact_number}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{app.address || '-'}</td>
                                         <td className="px-6 py-4 text-sm">
                                             <span
                                                 className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -317,6 +385,7 @@ const ApplicationApproval = () => {
                                             >
                                                 {app.status}
                                             </span>
+                                            {/* Backend now filters enrolled, so all Approved here are enrollable */}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center gap-2">
@@ -354,6 +423,33 @@ const ApplicationApproval = () => {
                                                         </button>
                                                     </>
                                                 )}
+                                                
+                                                {/* FIXED: Enroll button with proper states */}
+                                                {app.status === "Approved" && role === 'admin' && (
+                                                    // Backend filters out enrolled, so show active Enroll button
+                                                    <button
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            setSelectedApplicationForEnrollment(app);
+                                                            setEnrollmentModalOpen(true);
+                                                        }}
+                                                        disabled={enrollingId === app.id}
+                                                        className="px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all hover:scale-105 disabled:opacity-50 text-xs font-medium flex items-center gap-1"
+                                                        title="Enroll Beneficiary in Program"
+                                                    >
+                                                        {enrollingId === app.id ? (
+                                                            <>
+                                                                <Loader size={14} className="animate-spin" />
+                                                                Enrolling...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <UserCheck size={14} />
+                                                                Enroll
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -365,10 +461,25 @@ const ApplicationApproval = () => {
             )}
 
             {/* Empty State */}
-            {!loading && applications.length === 0 && (
+            {!loading && filteredApplications.length === 0 && (
                 <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                    <p className="text-gray-500 text-lg">No {selectedFilter.toLowerCase()} applications</p>
+                    <p className="text-gray-500 text-lg">No {selectedFilter.toLowerCase()} applications found</p>
                 </div>
+            )}
+
+            {/* Enrollment Modal */}
+            {selectedApplicationForEnrollment && (
+                <EnrollmentModal
+                    isOpen={enrollmentModalOpen}
+                    applicationId={selectedApplicationForEnrollment.id}
+                    beneficiaryName={`${selectedApplicationForEnrollment.first_name} ${selectedApplicationForEnrollment.middle_name || ''} ${selectedApplicationForEnrollment.last_name}`}
+                    programType={selectedApplicationForEnrollment.program_type}
+                    onClose={() => {
+                        setEnrollmentModalOpen(false);
+                        setSelectedApplicationForEnrollment(null);
+                    }}
+                    onEnroll={handleEnrollmentComplete}
+                />
             )}
         </div>
     );

@@ -7,13 +7,14 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Settings from './pages/Settings';
 
 import BeneficiaryDashboard from './pages/beneficiary/BeneficiaryDashboard';
 import BeneficiaryApplication from './pages/beneficiary/BeneficiaryApplication';
 import BeneficiaryAttendance from './pages/beneficiary/BeneficiaryAttendance';
 import BeneficiaryPayment from './pages/beneficiary/BeneficiaryPayment';
 import BeneficiaryRequirements from './pages/beneficiary/BeneficiaryRequirements';
-import SpesOfficialForms from './pages/beneficiary/forms/SpesOfficialForms';
+import SpesOfficialForms from './pages/beneficiary/forms/SPES/SpesOfficialForms';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Sidebar from "./components/Sidebar"; // Check your actual path here
@@ -126,7 +127,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Admin Protected Routes with Sidebar */}
+{/* Admin Protected Routes with Sidebar */}
         <Route
           element={
             <ProtectedRoute allowedRole="admin">
@@ -136,6 +137,7 @@ function App() {
         >
           {/* All these paths will now show the Sidebar */}
           <Route path="/dashboard" element={<AdminDashboard />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/beneficiaries" element={<Beneficiaries />} />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/programs" element={<Programs />} />
@@ -144,14 +146,14 @@ function App() {
           <Route path="/payment" element={<Payment />} />
           <Route path="/applications" element={<ApplicationApproval />} />
           <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
-          <Route path="/documents-review" element={<DocumentsReview />} />
+          <Route path="/applications/:applicationId/documents-review" element={<DocumentsReview />} />
 
           {/* Redirect /admin to /dashboard */}
           <Route path="/admin" element={<Navigate to="/dashboard" />} />
 
         </Route>
 
-        {/* Staff Protected Routes with Sidebar - same pages as admin, no approve/reject */}
+{/* Staff Protected Routes with Sidebar - same pages as admin, no approve/reject */}
         <Route
           element={
             <ProtectedRoute allowedRole="staff">
@@ -160,6 +162,7 @@ function App() {
           }
         >
           <Route path="/staff" element={<StaffDashboard />} />
+          <Route path="/staff/settings" element={<Settings />} />
           <Route path="/staff/beneficiaries" element={<Beneficiaries />} />
           <Route path="/staff/attendance" element={<AttendancePage />} />
           <Route path="/staff/payment" element={<Payment />} />
@@ -172,7 +175,7 @@ function App() {
         </Route>
 
 
-        {/* Beneficiary Protected Routes with Sidebar */}
+{/* Beneficiary Protected Routes with Sidebar */}
         <Route
           element={
             <ProtectedRoute allowedRole="beneficiary">
@@ -181,6 +184,7 @@ function App() {
           }
         >
           <Route path="/beneficiary" element={<BeneficiaryDashboard />} />
+          <Route path="/beneficiary/settings" element={<Settings />} />
           <Route path="/beneficiary/application" element={<BeneficiaryApplication />} />
           <Route path="/beneficiary/requirements" element={<BeneficiaryRequirements />} />
           <Route path="/beneficiary/spes-forms" element={<SpesOfficialForms />} />

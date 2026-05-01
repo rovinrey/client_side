@@ -1,4 +1,4 @@
-import { useState, useEffect, type JSX } from "react";
+import { useState, useEffect, useMemo, type JSX } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Plus, 
@@ -13,7 +13,8 @@ import {
   CheckCircle,
   AlertCircle,
   FolderOpen,
-  ClipboardCheck
+  ClipboardCheck,
+  Filter
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
@@ -38,6 +39,10 @@ const Programs = () => {
     const location = useLocation();
     const [programs, setPrograms] = useState<Program[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // ── Status filter ──────────────────────────────────────────────────────────
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProgram, setEditingProgram] = useState<Program | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; programId: number | null }>({
@@ -56,12 +61,10 @@ const Programs = () => {
         end_date: ""
     });
 
-    // Fetch programs from backend on component mount
     useEffect(() => {
         fetchPrograms();
     }, []);
 
-    // Auto-dismiss toast after 3 seconds
     useEffect(() => {
         if (toast) {
             const timer = setTimeout(() => setToast(null), 3000);
@@ -69,7 +72,6 @@ const Programs = () => {
         }
     }, [toast]);
 
-    // Map program name to the filter value used by the Beneficiary page
     const getProgramFilterValue = (programName: string): string => {
         const name = programName.toUpperCase();
         if (name.includes('TUPAD')) return 'tupad';
@@ -80,15 +82,13 @@ const Programs = () => {
         return programName.toLowerCase();
     };
 
-    // Navigate to beneficiary list filtered by the selected program
-    const handleViewBeneficiaries = (programName: string) => {
-        const filterValue = getProgramFilterValue(programName);
-        const isStaff = location.pathname.startsWith('/staff');
-        const basePath = isStaff ? '/staff/beneficiaries' : '/beneficiaries';
-        navigate(`${basePath}?program=${encodeURIComponent(filterValue)}`);
+    // view beneficiaries or attendance page with program filter applied
+    const handleViewBeneficiaries = (programId: number, programName: string) => {
+    const isStaff = location.pathname.startsWith('/staff');
+    const basePath = isStaff ? '/staff/beneficiaries' : '/beneficiaries';
+    navigate(`${basePath}?program_id=${programId}&program_name=${encodeURIComponent(programName)}`);
     };
 
-    // Navigate to attendance page filtered by the selected program
     const handleViewAttendance = (programName: string) => {
         const filterValue = getProgramFilterValue(programName);
         const isStaff = location.pathname.startsWith('/staff');
@@ -101,7 +101,7 @@ const Programs = () => {
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
 
-    // get all programs and display in the admin UI 
+    // fetch all programs and map to Program type with icons based on name
     const fetchPrograms = async () => {
         setLoading(true);
         try {
@@ -128,7 +128,12 @@ const Programs = () => {
         }
     };
 
-    // Open modal for creating a new program
+    // ── Filter programs by selected status ─────────────────────────────────────
+    const filteredPrograms = useMemo(() => {
+        if (statusFilter === "all") return programs;
+        return programs.filter(p => p.status?.toLowerCase() === statusFilter);
+    }, [programs, statusFilter]);
+
     const createProgram = () => {
         setEditingProgram(null);
         setFormData({
@@ -173,16 +178,12 @@ const Programs = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate form
         const validationErrors = validateProgramForm(formData);
         if (validationErrors.length > 0) {
             setToast({ message: formatErrors(validationErrors), type: "error" });
@@ -252,23 +253,54 @@ const Programs = () => {
             }
         }
     };
+
+    // Label shown under the grid when a filter is active
+    const filterLabel: Record<string, string> = {
+        ongoing: "Ongoing",
+        active: "Active",
+        pending: "Pending",
+        completed: "Completed",
+    };
+
     return (
         <div className="space-y-8">
-            {/* Header */}
+            {/* ── Header ──────────────────────────────────────────────────────── */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Program Management</h1>
                     <p className="text-gray-500 text-sm">Monitor budget utilization and beneficiary allocation.</p>
                 </div>
-                <button 
-                    onClick={createProgram}
-                    className="flex-shrink-0 flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-teal-100">
-                    <Plus size={18} />
-                    Create New Program
-                </button>
+
+                <div className="flex items-center gap-3">
+                    {/* ── Status Filter Dropdown ─────────────────────────────── */}
+                    <div className="relative flex items-center">
+                        <Filter size={14} className="absolute left-3 text-gray-400 pointer-events-none" />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="pl-8 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 appearance-none cursor-pointer shadow-sm"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+
+                    <button
+                        onClick={createProgram}
+                        className="flex-shrink-0 flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-teal-100"
+                    >
+                        <Plus size={18} />
+                        Create New Program
+                    </button>
+                </div>
             </div>
 
-            {/* Program Grid */}
+            {/* ── Active filter badge ─────────────────────────────────────────── */}
+           
+            {/* ── Program Grid ────────────────────────────────────────────────── */}
             {loading ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {[1, 2, 3, 4].map((i) => (
@@ -306,132 +338,140 @@ const Programs = () => {
                     ))}
                 </div>
             ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {programs.map((prog) => {
-                    const filledSlots = prog.filled || 0;
-                    const remainingSlots = Math.max(prog.slots - filledSlots, 0);
-                    const progress = prog.slots > 0 ? Math.min((filledSlots / prog.slots) * 100, 100) : 0;
-                    const budgetProgress = prog.budget > 0 ? Math.min((prog.used / prog.budget) * 100, 100) : 0;
-                    const slotsColor = remainingSlots === 0 ? 'text-red-600' : remainingSlots <= 5 ? 'text-amber-600' : 'text-gray-900';
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {filteredPrograms.map((prog) => {
+                        const filledSlots = prog.filled || 0;
+                        const remainingSlots = Math.max(prog.slots - filledSlots, 0);
+                        const progress = prog.slots > 0 ? Math.min((filledSlots / prog.slots) * 100, 100) : 0;
+                        const budgetProgress = prog.budget > 0 ? Math.min((prog.used / prog.budget) * 100, 100) : 0;
+                        const slotsColor = remainingSlots === 0 ? 'text-red-600' : remainingSlots <= 5 ? 'text-amber-600' : 'text-gray-900';
 
-                    return (
-                        <div key={prog.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex gap-4">
-                                    <div className="p-3 bg-gray-50 rounded-xl">
-                                        {prog.icon}
+                        return (
+                            <div key={prog.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex gap-4">
+                                        <div className="p-3 bg-gray-50 rounded-xl">
+                                            {prog.icon}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">{prog.program_name}</h3>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                <Calendar size={12} />
+                                                {prog.start_date
+                                                    ? `${new Date(prog.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${prog.end_date ? ` – ${new Date(prog.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`
+                                                    : 'No dates set'}
+                                                {' • '}{prog.location}
+                                            </p>
+                                        </div>
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                            prog.status === 'ongoing' || prog.status === 'active'
+                                                ? 'bg-green-100 text-green-700'
+                                                : prog.status === 'completed'
+                                                ? 'bg-gray-100 text-gray-600'
+                                                : prog.status === 'pending'
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : 'bg-teal-100 text-teal-700'
+                                        }`}>
+                                            {prog.status.charAt(0).toUpperCase() + prog.status.slice(1)}
+                                        </span>
+                                        <button
+                                            onClick={() => openEditModal(prog)}
+                                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                            title="Edit Program"
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => openDeleteConfirm(prog.id)}
+                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                            title="Delete Program"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
                                     <div>
-                                        <h3 className="font-bold text-gray-900">{prog.program_name}</h3>
-                                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                                            <Calendar size={12} />
-                                            {prog.start_date
-                                                ? `${new Date(prog.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${prog.end_date ? ` – ${new Date(prog.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`
-                                                : 'No dates set'}
-                                            {' • '}{prog.location}
-                                        </p>
+                                        <div className="flex justify-between text-xs mb-2">
+                                            <span className="text-gray-500 font-medium">Beneficiary Slots</span>
+                                            <span className={`font-bold ${slotsColor}`}>{filledSlots} / {prog.slots}</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${
+                                                    remainingSlots === 0 ? 'bg-red-500' : remainingSlots <= 5 ? 'bg-amber-500' : 'bg-teal-500'
+                                                }`}
+                                                style={{ width: `${progress}%` }}
+                                            />
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 mt-1">{remainingSlots} {remainingSlots === 1 ? 'slot' : 'slots'} remaining</p>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                        prog.status === 'ongoing' || prog.status === 'active'
-                                            ? 'bg-green-100 text-green-700'
-                                            : prog.status === 'completed'
-                                            ? 'bg-gray-100 text-gray-600'
-                                            : prog.status === 'pending'
-                                            ? 'bg-amber-100 text-amber-700'
-                                            : 'bg-teal-100 text-teal-700'
-                                    }`}>
-                                        {prog.status.charAt(0).toUpperCase() + prog.status.slice(1)}
-                                    </span>
-                                    <button
-                                        onClick={() => openEditModal(prog)}
-                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                                        title="Edit Program"
-                                    >
-                                        <Pencil size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => openDeleteConfirm(prog.id)}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                                        title="Delete Program"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="space-y-6">
-                                {/* Beneficiary Slots Progress */}
-                                <div>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-gray-500 font-medium">Beneficiary Slots</span>
-                                        <span className={`font-bold ${slotsColor}`}>{filledSlots} / {prog.slots}</span>
+                                    <div>
+                                        <div className="flex justify-between text-xs mb-2">
+                                            <span className="text-gray-500 font-medium">Budget Utilization</span>
+                                            <span className="text-gray-900 font-bold">₱{prog.used.toLocaleString()} / ₱{prog.budget.toLocaleString()}</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${budgetProgress}%` }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full transition-all duration-500 ${
-                                                remainingSlots === 0 ? 'bg-red-500' : remainingSlots <= 5 ? 'bg-amber-500' : 'bg-teal-500'
-                                            }`}
-                                            style={{ width: `${progress}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[11px] text-gray-400 mt-1">{remainingSlots} {remainingSlots === 1 ? 'slot' : 'slots'} remaining</p>
                                 </div>
 
-                                {/* Budget Utilization Progress */}
-                                <div>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-gray-500 font-medium">Budget Utilization</span>
-                                        <span className="text-gray-900 font-bold">₱{prog.used.toLocaleString()} / ₱{prog.budget.toLocaleString()}</span>
-                                     </div>
-                                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
-                                            style={{ width: `${budgetProgress}%` }}
-                                        />
+                                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <Users size={16} />
+                                        <span>{filledSlots} {filledSlots === 1 ? 'beneficiary' : 'beneficiaries'} enrolled</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleViewAttendance(prog.program_name)}
+                                            className="text-amber-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
+                                        >
+                                            Attendance <ClipboardCheck size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleViewBeneficiaries(prog.id,prog.program_name)}
+                                            className="text-teal-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
+                                        >
+                                            View Beneficiaries <ChevronRight size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <Users size={16} />
-                                    <span>{filledSlots} {filledSlots === 1 ? 'beneficiary' : 'beneficiaries'} enrolled</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button 
-                                        onClick={() => handleViewAttendance(prog.program_name)}
-                                        className="text-amber-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
-                                    >
-                                        Attendance <ClipboardCheck size={16} />
-                                    </button>
-                                    <button 
-                                        onClick={() => handleViewBeneficiaries(prog.program_name)}
-                                        className="text-teal-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
-                                    >
-                                        View Beneficiaries <ChevronRight size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
             )}
 
-            {/* Empty State */}
-            {!loading && programs.length === 0 && (
+            {/* ── Empty State ─────────────────────────────────────────────────── */}
+            {!loading && filteredPrograms.length === 0 && (
                 <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FolderOpen className="text-gray-400" size={28} />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-1">No Programs Yet</h3>
-                    <p className="text-gray-500 text-sm">Create your first program to get started.</p>
+                    {statusFilter !== "all" ? (
+                        <>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                                No {filterLabel[statusFilter]} Programs
+                            </h3>
+                        </>
+                    ) : (
+                        <>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-1">No Programs Yet</h3>
+                            <p className="text-gray-500 text-sm">Create your first program to get started.</p>
+                        </>
+                    )}
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
+            {/* ── Delete Confirmation Modal ────────────────────────────────────── */}
             {deleteConfirm.show && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
@@ -462,28 +502,20 @@ const Programs = () => {
                 </div>
             )}
 
-            {/* Create Program Modal */}
+            {/* ── Create / Edit Program Modal ──────────────────────────────────── */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
-                        {/* Modal Header */}
                         <div className="flex justify-between items-center p-6 border-b border-gray-200">
                             <h2 className="text-xl font-bold text-gray-900">{editingProgram ? 'Edit Program' : 'Create New Program'}</h2>
-                            <button
-                                onClick={closeModal}
-                                className="text-gray-500 hover:text-gray-700 transition-colors"
-                            >
+                            <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
 
-                        {/* Modal Body */}
                         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                            {/* Program Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Program Name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Program Name</label>
                                 <input
                                     type="text"
                                     name="name"
@@ -495,11 +527,8 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* Location */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Location
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                                 <input
                                     type="text"
                                     name="location"
@@ -511,11 +540,8 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* Slots */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Number of Slots
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Number of Slots</label>
                                 <input
                                     type="number"
                                     name="slots"
@@ -527,11 +553,8 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* Budget */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Budget (₱)
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Budget (₱)</label>
                                 <input
                                     type="number"
                                     name="budget"
@@ -543,11 +566,8 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* Status */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Status
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                                 <select
                                     name="status"
                                     value={formData.status}
@@ -561,11 +581,8 @@ const Programs = () => {
                                 </select>
                             </div>
 
-                            {/* Start Date */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Start Date
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                                 <input
                                     type="date"
                                     name="start_date"
@@ -576,11 +593,8 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* End Date */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    End Date
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
                                 <input
                                     type="date"
                                     name="end_date"
@@ -592,7 +606,6 @@ const Programs = () => {
                                 />
                             </div>
 
-                            {/* Modal Actions */}
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
@@ -606,9 +619,7 @@ const Programs = () => {
                                     type="submit"
                                     disabled={submitting}
                                     className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        submitting
-                                            ? 'bg-gray-400 cursor-not-allowed'
-                                            : 'bg-teal-600 text-white hover:bg-teal-700'
+                                        submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-teal-600 text-white hover:bg-teal-700'
                                     }`}
                                 >
                                     {submitting
@@ -621,7 +632,7 @@ const Programs = () => {
                 </div>
             )}
 
-            {/* Toast Notification */}
+            {/* ── Toast Notification ──────────────────────────────────────────── */}
             {toast && (
                 <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
                     toast.type === 'success'

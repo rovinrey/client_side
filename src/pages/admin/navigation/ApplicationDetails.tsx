@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { ArrowLeft, Loader, Pencil, Save, X, FileSpreadsheet, Printer } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { ArrowLeft, Loader, Pencil, Save, X, FileSpreadsheet, Printer, CheckCircle, XCircle, FileText, Download, Eye, Trash2, Edit2, FileDown } from "lucide-react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
+import DocumentVerification from '../../../components/DocumentVerification';
 
 // ─── Types ───────────────────────────────────────────
 interface ApplicationBase {
@@ -24,6 +25,23 @@ interface ApplicationBase {
     gender: string | null;
     contact_number: string | null;
     address: string | null;
+}
+
+interface DocumentInfo {
+    document_id: number;
+    user_id: number;
+    program_type: string;
+    document_type: string;
+    document_type_label: string;
+    original_name: string;
+    file_size: number;
+    mime_type: string;
+    uploaded_at: string;
+    is_verified: number;
+    verified_by: number | null;
+    verified_at: string | null;
+    verified_by_name: string | null;
+    url: string;
 }
 
 interface ApplicationDetailsResponse {
@@ -171,7 +189,7 @@ function EditableSection({
             if (table === "beneficiaries") {
                 // Use the dedicated beneficiary update endpoint
                 await axios.put(
-                    `${API_BASE_URL}/api/applications/applications/${applicationId}/beneficiary`,
+                    `${API_BASE_URL}/api/applications/${applicationId}/beneficiary`,
                     editValues,
                     { headers: getAuthHeaders() }
                 );
@@ -267,14 +285,391 @@ function EditableSection({
     );
 }
 
+// ─── Documents Section Component ─────────────────────
+function DocumentsSection({
+    userId,
+    documents,
+    loading,
+    onVerify,
+    onReject,
+    onRefresh,
+}: {
+    applicationId: number;
+    userId: number | null;
+    documents: DocumentInfo[];
+    loading: boolean;
+    onVerify: (documentId: number) => void;
+    onReject: (documentId: number) => void;
+    onRefresh: () => void;
+}) {
+    const token = localStorage.getItem("token") || "";
+    const replaceInputRef = useRef<HTMLInputElement>(null);
+
+    const [previewDoc, setPreviewDoc] = useState<DocumentInfo | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<DocumentInfo | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [replacingId, setReplacingId] = useState<number | null>(null);
+    const [exporting, setExporting] = useState(false);
+
+    // Handlers for document operations
+    const handleViewDocument = (doc: DocumentInfo) => setPreviewDoc(doc);
+
+    const handlePrint = (doc: DocumentInfo) => {
+        const url = `${API_BASE_URL}${doc.url}`;
+        const isImage = doc.mime_type?.startsWith("image/");
+        const isPdf = doc.mime_type === "application/pdf";
+
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) return;
+
+        if (isImage) {
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Print - ${doc.document_type_label}</title>
+                    <style>
+                        @media print { body { margin: 0; } img { max-width: 100%; height: auto; } }
+                        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
+                        img { max-width: 100%; max-height: 95vh; object-fit: contain; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${url}" onload="window.print(); window.close();" />
+                </body>
+                </html>
+            `);
+        } else if (isPdf) {
+            printWindow.document.write(`
+                <html>
+                <head><title>Print - ${doc.document_type_label}</title></head>
+                <body style="margin:0">
+                    <iframe src="${url}" style="width:100%;height:100vh;border:none;" onload="setTimeout(()=>{this.contentWindow.print();},500)"></iframe>
+                </body>
+                </html>
+            `);
+        }
+        printWindow.document.close();
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await axios.delete(
+                `${API_BASE_URL}/api/admin/documents/${deleteTarget.document_id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setDeleteTarget(null);
+            onRefresh();
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Failed to delete document");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleStartReplace = (docId: number) => {
+        setReplacingId(docId);
+        setTimeout(() => replaceInputRef.current?.click(), 50);
+    };
+
+    const handleReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !replacingId) {
+            setReplacingId(null);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("document", file);
+
+        try {
+            await axios.put(
+                `${API_BASE_URL}/api/admin/documents/${replacingId}`,
+                formData,
+                { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
+            );
+            onRefresh();
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Failed to replace document");
+        } finally {
+            setReplacingId(null);
+            if (replaceInputRef.current) replaceInputRef.current.value = "";
+        }
+    };
+
+    const handleExportWord = async () => {
+        if (!userId) return;
+        setExporting(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/admin/documents/export-word/${userId}`,
+                { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    responseType: "blob"
+                }
+            );
+            const url = URL.createObjectURL(response.data);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Document_Report_${new Date().toISOString().slice(0, 10)}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Failed to export documents");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-900">Submitted Documents</h2>
+                </div>
+                <div className="flex items-center justify-center px-6 py-8">
+                    <Loader className="animate-spin text-teal-600" size={24} />
+                </div>
+            </section>
+        );
+    }
+
+    if (!documents || documents.length === 0) {
+        return (
+            <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-900">Submitted Documents</h2>
+                </div>
+                <div className="px-6 py-8 text-center">
+                    <FileText size={32} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-500">No documents submitted yet</p>
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <>
+            {/* Hidden file input for replace */}
+            <input
+                ref={replaceInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden"
+                onChange={handleReplaceFile}
+            />
+
+            <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-100 px-6 py-4 bg-gray-50 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Submitted Documents</h2>
+                        <p className="text-xs text-gray-500 mt-1">{documents.length} document(s) submitted</p>
+                    </div>
+                    {documents.length > 0 && (
+                        <button
+                            onClick={handleExportWord}
+                            disabled={exporting || !userId}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+                        >
+                            <FileDown size={14} />
+                            {exporting ? "Exporting..." : "Export to Word"}
+                        </button>
+                    )}
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                    {documents.map((doc) => (
+                        <div key={doc.document_id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="text-sm font-semibold text-gray-900">{doc.document_type_label}</h3>
+                                        {doc.is_verified ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                                                <CheckCircle size={12} /> Verified
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
+                                                <XCircle size={12} /> Pending
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 truncate mb-2">
+                                        <span className="font-medium">{doc.original_name}</span>
+                                        {doc.file_size && (
+                                            <>
+                                                {" "} • {(doc.file_size / 1024).toFixed(1)} KB
+                                            </>
+                                        )}
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                                        <div>
+                                            <span className="font-medium">Uploaded:</span>{" "}
+                                            {new Date(doc.uploaded_at).toLocaleString("en-PH", {
+                                                year: "numeric", month: "short", day: "numeric",
+                                                hour: "2-digit", minute: "2-digit"
+                                            })}
+                                        </div>
+                                        {doc.is_verified && doc.verified_at && (
+                                            <div>
+                                                <span className="font-medium">Verified:</span>{" "}
+                                                {new Date(doc.verified_at).toLocaleString("en-PH", {
+                                                    year: "numeric", month: "short", day: "numeric",
+                                                    hour: "2-digit", minute: "2-digit"
+                                                })}
+                                            </div>
+                                        )}
+                                        {doc.is_verified && doc.verified_by_name && (
+                                            <div>
+                                                <span className="font-medium">Verified by:</span> {doc.verified_by_name}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <button
+                                        onClick={() => handleViewDocument(doc)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    >
+                                        <Eye size={13} /> View
+                                    </button>
+                                    <button
+                                        onClick={() => handlePrint(doc)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                        <Printer size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleStartReplace(doc.document_id)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                                    >
+                                        <Edit2 size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setDeleteTarget(doc)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                    {!doc.is_verified ? (
+                                        <button
+                                            onClick={() => onVerify(doc.document_id)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors ml-1"
+                                        >
+                                            <CheckCircle size={13} /> Verify
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => onReject(doc.document_id)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors ml-1"
+                                        >
+                                            <XCircle size={13} /> Reject
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* Document Preview Modal */}
+            {previewDoc && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900">{previewDoc.document_type_label}</h3>
+                            <button
+                                onClick={() => setPreviewDoc(null)}
+                                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center">
+                            {previewDoc.mime_type?.startsWith("image/") ? (
+                                <img
+                                    src={`${API_BASE_URL}${previewDoc.url}`}
+                                    alt={previewDoc.document_type_label}
+                                    className="max-w-full max-h-full object-contain"
+                                />
+                            ) : previewDoc.mime_type === "application/pdf" ? (
+                                <iframe
+                                    src={`${API_BASE_URL}${previewDoc.url}`}
+                                    className="w-full h-full border-0"
+                                    title={previewDoc.document_type_label}
+                                />
+                            ) : (
+                                <div className="text-center text-gray-500 p-8">
+                                    <FileText size={48} className="mx-auto mb-3 opacity-50" />
+                                    <p>Preview not available for this file type</p>
+                                    <a
+                                        href={`${API_BASE_URL}${previewDoc.url}`}
+                                        download
+                                        className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        <Download size={16} /> Download
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteTarget && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <Trash2 size={20} className="text-red-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">Delete Document</h3>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-6">
+                                Are you sure you want to delete "{deleteTarget.original_name}"? This action cannot be undone.
+                            </p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setDeleteTarget(null)}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                                >
+                                    {deleting ? "Deleting..." : "Delete"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
 // ─── Main Page ───────────────────────────────────────
 function ApplicationDetails() {
     const navigate = useNavigate();
     const { applicationId } = useParams();
     const [details, setDetails] = useState<ApplicationDetailsResponse | null>(null);
+    const [documents, setDocuments] = useState<DocumentInfo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [documentsLoading, setDocumentsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [exporting, setExporting] = useState(false);
+    const [, setVerifying] = useState<number | null>(null);
 
     const fetchDetails = useCallback(async () => {
         if (!applicationId) {
@@ -297,9 +692,69 @@ function ApplicationDetails() {
         }
     }, [applicationId]);
 
+    const fetchDocuments = useCallback(async () => {
+        if (!applicationId) return;
+        if (!details?.application?.user_id) return;
+        
+        setDocumentsLoading(true);
+        try {
+            const res = await axios.get<{ documents: DocumentInfo[] }>(
+                `${API_BASE_URL}/api/admin/documents/`,
+                { 
+                    headers: getAuthHeaders(),
+                    params: { userId: details.application.user_id }
+                }
+            );
+            setDocuments(res.data.documents || []);
+        } catch (err: any) {
+            console.error("Failed to load documents:", err?.response?.data?.message);
+            setDocuments([]);
+        } finally {
+            setDocumentsLoading(false);
+        }
+    }, [applicationId, details]);
+
+    const handleVerifyDocument = async (documentId: number) => {
+        setVerifying(documentId);
+        try {
+            await axios.put(
+                `${API_BASE_URL}/api/admin/documents/${documentId}/verify`,
+                {},
+                { headers: getAuthHeaders() }
+            );
+            await fetchDocuments();
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Failed to verify document");
+        } finally {
+            setVerifying(null);
+        }
+    };
+
+    const handleRejectDocument = async (documentId: number) => {
+        setVerifying(documentId);
+        try {
+            await axios.put(
+                `${API_BASE_URL}/api/admin/documents/${documentId}/reject`,
+                {},
+                { headers: getAuthHeaders() }
+            );
+            await fetchDocuments();
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Failed to reject document");
+        } finally {
+            setVerifying(null);
+        }
+    };
+
     useEffect(() => {
         fetchDetails();
     }, [fetchDetails]);
+
+    useEffect(() => {
+        if (details?.application?.user_id) {
+            fetchDocuments();
+        }
+    }, [details?.application?.user_id]);
 
     // ── Annex D Export ──
     const handleAnnexDExport = async () => {
@@ -330,8 +785,6 @@ function ApplicationDetails() {
     const handlePrint = () => {
         window.print();
     };
-
-    const appId = Number(applicationId);
 
     return (
         <div className="space-y-6 print:space-y-4">
@@ -412,41 +865,82 @@ function ApplicationDetails() {
                         </div>
                     </div>
 
+                    {/* Documents Section */}
+                    <DocumentsSection 
+                        applicationId={Number(applicationId)}
+                        userId={details.application.user_id}
+                        documents={documents}
+                        loading={documentsLoading}
+                        onVerify={handleVerifyDocument}
+                        onReject={handleRejectDocument}
+                        onRefresh={fetchDocuments}
+                    />
+
+{/* Document Verification Section */}
+                    {documents.length > 0 && (
+                        <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                            <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+                                <h2 className="text-lg font-semibold text-gray-900">Document Verification</h2>
+                                <p className="text-xs text-gray-500 mt-1">Review and verify submitted documents</p>
+                            </div>
+                            <div className="px-6 py-4">
+                                <DocumentVerification
+                                    applicationId={Number(applicationId)}
+                                    documents={documents.map((doc) => ({
+                                        document_id: doc.document_id,
+                                        document_type: doc.document_type,
+                                        original_name: doc.original_name,
+                                        file_size: doc.file_size,
+                                        mime_type: doc.mime_type,
+                                        uploaded_at: doc.uploaded_at,
+                                        status: doc.is_verified === 1 ? 'verified' : doc.is_verified === 2 ? 'rejected' : 'pending',
+                                        verified_by: doc.verified_by,
+                                        verified_at: doc.verified_at,
+                                        remarks: null,
+                                        url: doc.url,
+                                    }))}
+                                    userRole={localStorage.getItem('role') || 'beneficiary'}
+                                    onVerificationChange={fetchDocuments}
+                                />
+                            </div>
+                        </section>
+                    )}
+
                     {/* Editable sections */}
                     <EditableSection
                         title="Application Information"
                         data={details.application as unknown as Record<string, unknown>}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                     <EditableSection
                         title="TUPAD Form Data"
                         data={details.details.tupad as Record<string, unknown> | null}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                     <EditableSection
                         title="SPES Form Data"
                         data={details.details.spes as Record<string, unknown> | null}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                     <EditableSection
                         title="DILP Form Data"
                         data={details.details.dilp as Record<string, unknown> | null}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                     <EditableSection
                         title="GIP Form Data"
                         data={details.details.gip as Record<string, unknown> | null}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                     <EditableSection
                         title="Jobseeker Form Data"
                         data={details.details.jobseeker as Record<string, unknown> | null}
-                        applicationId={appId}
+                        applicationId={Number(applicationId)}
                         onSaved={fetchDetails}
                     />
                 </>

@@ -3,12 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ChevronDown, ChevronUp, Edit3, ExternalLink, Upload } from 'lucide-react';
 
 import DocumentUploadModule, { type RequirementDef } from '../../components/DocumentUploadModule';
-import SPESDocumentsModule from '../../components/SPESDocumentsModule';
-import { DRAFT_STORAGE_KEY, type SpesOfficialFormKey } from './forms/SpesOfficialForms';
+import SPESDocumentsModule from './forms/SPES/SPESDocumentsModule';
+import { DRAFT_STORAGE_KEY, type SpesOfficialFormKey } from './forms/SPES/SpesOfficialForms';
 import { useRequirementStatus } from '../../hooks/useRequirementStatus';
 import applicationStatusAPI, { type ApplicationSubmission } from '../../api/applicationStatus.api';
 import {
-    BENEFICIARY_PROGRAMS,
     BENEFICIARY_SELECTED_PROGRAM_KEY,
     get_program_definition,
     is_program_key,
@@ -188,9 +187,11 @@ function BeneficiaryRequirements() {
         const token = localStorage.getItem('token');
         const user_id = localStorage.getItem('user_id');
         if (!token || !user_id) return;
-        applicationStatusAPI.getStatus(user_id, token)
+applicationStatusAPI.getStatus(user_id, token)
             .then((data) => set_submissions(data.submissions ?? []))
-            .catch(() => {});
+            .catch((err) => {
+                console.error('Failed to load application submissions:', err);
+            });
     }, []);
 
     const PROGRAM_TYPE_MAP: Record<ProgramKey, string> = {
@@ -267,46 +268,6 @@ function BeneficiaryRequirements() {
 
     return (
         <section className="w-full max-w-6xl mx-auto space-y-5">
-
-            {/* ── Program Tabs ── */}
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="px-5 pt-5 pb-2 sm:px-6">
-                    <h2 className="text-lg font-bold text-gray-900">Program Requirements</h2>
-                    <p className="mt-1 text-sm text-gray-500">Select a program to view its checklist and upload documents.</p>
-                </div>
-                <div className="px-5 pb-4 sm:px-6">
-                    <div className="flex flex-wrap gap-2">
-                        {BENEFICIARY_PROGRAMS.map((program) => {
-                            const is_active = selected_program === program.value;
-                            const completed = get_completed_count(program.value);
-                            const total = PROGRAM_REQUIREMENTS[program.value].length;
-                            const all_done = completed === total;
-
-                            return (
-                                <button
-                                    key={program.value}
-                                    type="button"
-                                    onClick={() => set_selected_program(program.value)}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
-                                        is_active
-                                            ? 'bg-teal-600 text-white shadow-md shadow-teal-200'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    {program.short_label}
-                                    <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                                        is_active
-                                            ? all_done ? 'bg-emerald-400 text-white' : 'bg-white/20 text-white'
-                                            : all_done ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
-                                    }`}>
-                                        {completed}/{total}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
 
             {/* ── Selected Program: Checklist ── */}
             <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">

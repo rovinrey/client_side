@@ -4,7 +4,6 @@ import {
   CreditCard, 
   ClipboardList, 
   BarChart3, 
-  FileText,
   FileCheck,
   LogOut
 } from 'lucide-react';
@@ -19,7 +18,6 @@ function Sidebar() {
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} />, exact: true },
         { name: "Programs", path: "/programs", icon: <ClipboardList size={18} />, exact: true },
         { name: "Applications", path: "/applications", icon: <FileCheck size={18} />, exact: true },
-        { name: "Documents", path: "/documents-review", icon: <FileText size={18} />, exact: true },
         { name: "Payment", path: "/payment", icon: <CreditCard size={18} />, exact: true },
         { name: "Reports", path: "/reports", icon: <BarChart3 size={18} />, exact: true },
     ];

@@ -85,6 +85,7 @@ function AdminDashboard() {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
+    
     // application status
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -99,11 +100,12 @@ function AdminDashboard() {
         }
     };
     
+    // approve application
     const handleApprove = async (id: number) => {
         setProcessingId(id);
         try {
             const res = await axios.put(
-                `${API_BASE_URL}/api/applications/applications/${id}/approve`,
+                `${API_BASE_URL}/api/applications/${id}/approve`,
                 {},
                 { headers: authHeaders }
             );
@@ -120,12 +122,13 @@ function AdminDashboard() {
         }
     };
 
+    // reject application with optional reason
     const handleReject = async (id: number) => {
         const reason = prompt("Rejection reason (optional):");
         setProcessingId(id);
         try {
             const res = await axios.put(
-                `${API_BASE_URL}/api/applications/applications/${id}/reject`,
+                `${API_BASE_URL}/api/applications/${id}/reject`,
                 { reason: reason || null },
                 { headers: authHeaders }
             );
@@ -142,10 +145,12 @@ function AdminDashboard() {
         }
     };
 
+    // when clicking on an application, navigate to the details page
     const handleOpenApplicationDetails = (applicationId: number) => {
         navigate(`/applications/${applicationId}`);
     };
 
+    // body of the admin dashboard component
     return (
         <>
             {/* Header section */}

@@ -25,4 +25,15 @@ export const programsAPI = {
     );
     return response.data;
   },
+
+  getReadyPrograms: async (): Promise<ActiveProgram[]> => {
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get<ActiveProgram[]>(
+      `${API_URL}/ready`,
+      { headers }
+    );
+    return response.data;
+  },
 };
+

@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import spesDocumentsApi, {
     type ApplicationStatus,
     type DocumentFieldId,
-} from '../api/spesDocuments.api';
-import { API_BASE_URL } from '../api/config';
+} from '../../../../api/spesDocuments.api';
+import { API_BASE_URL } from '../../../../api/config';
 
 // ─── Requirement definitions ─────────────────────────────────────────────────
 
