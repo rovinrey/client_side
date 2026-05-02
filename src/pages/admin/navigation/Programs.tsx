@@ -19,6 +19,7 @@ import {
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
 import { validateProgramForm, formatErrors } from '../../../utils/validation';
+import { getAuthHeaders } from '../../../utils/auth.utils';
 
 interface Program {
     id: number;
@@ -97,7 +98,7 @@ const Programs = () => {
     };
 
 const getAuthHeaders = () => {
-        const token = sessionStorage.getItem("token");
+        const token = localStorage.getItem("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
 

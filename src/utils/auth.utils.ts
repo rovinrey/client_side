@@ -4,12 +4,12 @@
  */
 
 /**
- * Safely extract user ID from sessionStorage with proper fallbacks
+ * Safely extract user ID from localStorage with proper fallbacks
  * @returns user_id as number or null if not found
  */
 export const getUserId = (): number | null => {
     // Primary source: user_id directly
-    const userId = sessionStorage.getItem('user_id');
+    const userId = localStorage.getItem('user_id');
     if (userId) {
         const parsed = Number(userId);
         if (!isNaN(parsed) && parsed > 0) {
@@ -18,7 +18,7 @@ export const getUserId = (): number | null => {
     }
 
     // Fallback: extract from stored user object
-    const userJson = sessionStorage.getItem('user');
+    const userJson = localStorage.getItem('user');
     if (userJson) {
         try {
             const user = JSON.parse(userJson);
@@ -38,11 +38,11 @@ export const getUserId = (): number | null => {
 };
 
 /**
- * Get authentication token from sessionStorage
+ * Get authentication token from localStorage
  * @returns JWT token or null if not found
  */
 export const getAuthToken = (): string | null => {
-    return sessionStorage.getItem('token');
+    return localStorage.getItem('token');
 };
 
 /**
@@ -68,8 +68,8 @@ export const isUserAuthenticated = (): boolean => {
  */
 export const handleSessionExpired = (message = 'Session expired. Please log in again.') => {
     alert(message);
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user_id');
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user');
     window.location.href = '/login';
 };

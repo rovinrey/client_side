@@ -1,18 +1,18 @@
 export const setAuth = (token: string, role: "admin" | "beneficiary" | "staff") => {
-  sessionStorage.setItem("token", token);
-  sessionStorage.setItem("role", role);
+  localStorage.setItem("token", token);
+  localStorage.setItem("role", role);
 };
 
 export const logout = (): void => {
-  sessionStorage.clear();
+  localStorage.clear();
 };
 
 export const isAuthenticated = (): boolean => {
-  return !!sessionStorage.getItem("token");
+  return !!localStorage.getItem("token");
 };
 
 export const getRole = (): "admin" | "beneficiary" | "staff" | null => {
-  const role = sessionStorage.getItem("role");
+  const role = localStorage.getItem("role");
   if (role === "admin" || role === "beneficiary" || role === "staff") return role;
   return null;
 };

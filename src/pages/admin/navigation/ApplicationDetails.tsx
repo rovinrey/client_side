@@ -50,7 +50,7 @@ interface ApplicationDetailsResponse {
 }
 
 const getAuthHeaders = () => {
-const token = sessionStorage.getItem("token");
+const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -302,7 +302,7 @@ function DocumentsSection({
     onReject: (documentId: number) => void;
     onRefresh: () => void;
 }) {
-const token = sessionStorage.getItem("token") || "";
+const token = localStorage.getItem("token") || "";
     const replaceInputRef = useRef<HTMLInputElement>(null);
 
     const [previewDoc, setPreviewDoc] = useState<DocumentInfo | null>(null);
@@ -899,7 +899,7 @@ function ApplicationDetails() {
                                         remarks: null,
                                         url: doc.url,
                                     }))}
-userRole={sessionStorage.getItem('role') || 'beneficiary'}
+userRole={localStorage.getItem('role') || 'beneficiary'}
                                     onVerificationChange={fetchDocuments}
                                 />
                             </div>

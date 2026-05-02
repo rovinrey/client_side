@@ -70,8 +70,8 @@ function Login() {
             }
 
 setAuth(token, userRole as "admin" | "beneficiary" | "staff");
-            sessionStorage.setItem("user_name", user.user_name);
-            sessionStorage.setItem("user_id", String(userId));
+            localStorage.setItem("user_name", user.user_name);
+            localStorage.setItem("user_id", String(userId));
 
             navigate(ROLE_REDIRECTS[userRole], { replace: true });
         } catch (err: unknown) {

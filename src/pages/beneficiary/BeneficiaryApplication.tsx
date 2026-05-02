@@ -124,9 +124,9 @@ setProgramsLoading(true);
 
 useEffect(() => {
         const fetchData = async () => {
-            const token = sessionStorage.getItem('token');
-            const role = sessionStorage.getItem('role');
-            const userId = sessionStorage.getItem('user_id');
+            const token = localStorage.getItem('token');
+            const role = localStorage.getItem('role');
+            const userId = localStorage.getItem('user_id');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');
@@ -144,7 +144,7 @@ useEffect(() => {
                 if (profileRes.status === 'fulfilled') {
                     setUser(profileRes.value.data);
                 } else if (profileRes.reason?.response?.status === 401) {
-                    sessionStorage.clear();
+                    localStorage.clear();
                     navigate('/login');
                     return;
                 }

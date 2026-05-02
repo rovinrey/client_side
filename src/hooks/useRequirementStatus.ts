@@ -84,7 +84,7 @@ const SPES_FIELD_IDS = Object.keys(SPES_REQUIREMENT_LABELS) as DocumentFieldId[]
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useRequirementStatus(): UseRequirementStatusReturn {
-const token = sessionStorage.getItem('token') ?? '';
+const token = localStorage.getItem('token') ?? '';
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

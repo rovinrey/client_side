@@ -49,8 +49,8 @@ const fetchReadyPrograms = useCallback(async () => {
 
 useEffect(() => {
         const fetchDashboardData = async () => {
-            const token = sessionStorage.getItem('token');
-            const role = sessionStorage.getItem('role');
+const token = localStorage.getItem('token');
+const role = localStorage.getItem('role');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');
@@ -66,7 +66,7 @@ useEffect(() => {
             } catch (err: any) {
                 const status = err?.response?.status;
                 if (status === 401 || status === 403) {
-                    sessionStorage.removeItem('token');
+                    localStorage.removeItem('token');
                     navigate('/login');
                     return;
                 }
@@ -107,7 +107,7 @@ useEffect(() => {
                             Retry
                         </button>
 <button
-                            onClick={() => { sessionStorage.removeItem('token'); navigate('/login'); }}
+                            onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
                             className="text-sm text-gray-500 hover:text-teal-600 font-medium"
                         >
                             Back to Login
