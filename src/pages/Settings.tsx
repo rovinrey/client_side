@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../api/config";
+import { storageGet, storageSet } from "../utils/storage";
 import { Loader, User, Lock, CheckCircle, AlertCircle } from "lucide-react";
 
 interface UserProfile {
@@ -29,7 +30,7 @@ const Settings: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState("");
 
     const getAuthHeaders = () => {
-        const token = localStorage.getItem("token");
+        const token = storageGet("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
 
@@ -71,9 +72,7 @@ const Settings: React.FC = () => {
                 { headers: getAuthHeaders() }
             );
             setSuccess(res.data.message);
-            // Update local user_name in localStorage
-            const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-            localStorage.setItem("user", JSON.stringify({ ...currentUser, user_name: userName }));
+            storageSet("user_name", userName);
         } catch (err: any) {
             setError(err.response?.data?.message || "Failed to update profile");
         } finally {

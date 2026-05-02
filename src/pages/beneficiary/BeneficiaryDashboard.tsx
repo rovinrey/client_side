@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AlertCircle, Rocket, Clock, CheckCircle2, Megaphone, Info } from "lucide-react";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
+import { logout } from '../../utils/auth';
 
 import WelcomeBanner from "../../components/Welcomebanner";
 import RequirementsSubmissionModule from "../../components/RequirementsSubmissionModule";
@@ -49,8 +51,8 @@ const fetchReadyPrograms = useCallback(async () => {
 
 useEffect(() => {
         const fetchDashboardData = async () => {
-const token = localStorage.getItem('token');
-const role = localStorage.getItem('role');
+            const token = storageGet('token');
+            const role = storageGet('role');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');
@@ -66,7 +68,7 @@ const role = localStorage.getItem('role');
             } catch (err: any) {
                 const status = err?.response?.status;
                 if (status === 401 || status === 403) {
-                    localStorage.removeItem('token');
+                    logout();
                     navigate('/login');
                     return;
                 }
@@ -107,7 +109,7 @@ const role = localStorage.getItem('role');
                             Retry
                         </button>
 <button
-                            onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                            onClick={() => { logout(); navigate('/login'); }}
                             className="text-sm text-gray-500 hover:text-teal-600 font-medium"
                         >
                             Back to Login

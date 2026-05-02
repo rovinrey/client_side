@@ -25,6 +25,7 @@ const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const DEFAULT_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 const BASE = API_BASE_URL;
 
@@ -60,7 +61,7 @@ function isImage(mime: string): boolean {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const DocumentUploadModule: React.FC<Props> = ({ programType, requirements, onAllSubmitted }) => {
-    const token = localStorage.getItem('token') ?? '';
+    const token = storageGet('token') ?? '';
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const [slots, setSlots] = useState<Record<string, SlotState>>(() => {

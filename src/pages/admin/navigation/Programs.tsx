@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
+import { storageGet } from '../../../utils/storage';
 import { validateProgramForm, formatErrors } from '../../../utils/validation';
 
 interface Program {
@@ -97,7 +98,7 @@ const Programs = () => {
     };
 
 const getAuthHeaders = () => {
-        const token = localStorage.getItem("token");
+        const token = storageGet("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
 

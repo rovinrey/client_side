@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Loader, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 interface Program {
     program_id: number;
@@ -20,12 +21,12 @@ interface EnrollmentModalProps {
     beneficiaryName: string;
     programType: string;
     onClose: () => void;
-    onEnroll: (programId: number) => void;
+    /** Parent performs POST /api/beneficiaries/enroll; reject on failure so the modal can show the error */
+    onEnroll: (programId: number) => Promise<void>;
 }
 
 const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
     isOpen,
-    applicationId,
     beneficiaryName,
     programType,
     onClose,
@@ -37,7 +38,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
     const [enrolling, setEnrolling] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     useEffect(() => {
@@ -75,20 +76,10 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
         setEnrolling(true);
         setError(null);
         try {
-            await axios.post(
-                `${API_BASE_URL}/api/beneficiaries/enroll`,
-                {
-                    applicationId,
-                    programId: selectedProgram,
-                },
-                { headers }
-            );
-            
-            onEnroll(selectedProgram);
-            onClose();
+            await onEnroll(selectedProgram);
         } catch (err: any) {
             console.error("Error enrolling beneficiary:", err);
-            setError(err.response?.data?.message || "Failed to enroll beneficiary");
+            setError(err.response?.data?.message || err.message || "Failed to enroll beneficiary");
         } finally {
             setEnrolling(false);
         }

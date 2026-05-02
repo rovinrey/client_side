@@ -13,6 +13,7 @@ import {
     is_program_key,
     type ProgramKey,
 } from '../../constants/beneficiaryPrograms';
+import { storageGet } from '../../utils/storage';
 
 // ─── Requirements definitions per program ────────────────────────────────────
 
@@ -26,6 +27,18 @@ interface RequirementItem {
     /** If set, this requirement is an online form submitted via the Application page */
     is_online_form?: boolean;
 }
+
+const TUPAD_FIT_TO_WORK_REQUIREMENT: RequirementItem = {
+    label: 'Fit to Work Certificate',
+    description: 'Required only for TUPAD beneficiaries who are 60 years old or above.',
+    document_type: 'fit_to_work',
+};
+
+const TUPAD_FIT_TO_WORK_UPLOAD_REQUIREMENT: RequirementDef = {
+    id: 'fit_to_work',
+    label: 'Fit to Work Certificate',
+    description: 'Required only for TUPAD beneficiaries who are 60 years old or above.',
+};
 
 const PROGRAM_REQUIREMENTS: Record<ProgramKey, RequirementItem[]> = {
     SPES: [
@@ -184,8 +197,8 @@ function BeneficiaryRequirements() {
     const [submissions, set_submissions] = useState<ApplicationSubmission[]>([]);
 
 useEffect(() => {
-        const token = localStorage.getItem('token');
-        const user_id = localStorage.getItem('user_id');
+        const token = storageGet('token');
+        const user_id = storageGet('user_id');
         if (!token || !user_id) return;
 applicationStatusAPI.getStatus(user_id, token)
             .then((data) => set_submissions(data.submissions ?? []))
@@ -250,8 +263,34 @@ applicationStatusAPI.getStatus(user_id, token)
 
     const selected_program_definition = get_program_definition(selected_program);
     const api_key = PROGRAM_TO_API_KEY[selected_program];
-    const requirements = PROGRAM_REQUIREMENTS[selected_program];
-    const upload_reqs = UPLOAD_REQUIREMENTS[api_key];
+    const selected_program_status = get_requirement_status(selected_program);
+
+    const should_show_tupad_fit_to_work = useMemo(() => {
+        if (selected_program !== 'TUPAD') return false;
+        const submitted_types = new Set(selected_program_status?.submittedTypes ?? []);
+        const missing_labels = new Set(selected_program_status?.missingLabels ?? []);
+        return (
+            submitted_types.has('fit_to_work') ||
+            missing_labels.has('Fit to Work Certificate') ||
+            (selected_program_status?.totalRequired ?? 0) > 3
+        );
+    }, [selected_program, selected_program_status]);
+
+    const requirements = useMemo(() => {
+        const base_requirements = PROGRAM_REQUIREMENTS[selected_program];
+        if (selected_program !== 'TUPAD' || !should_show_tupad_fit_to_work) {
+            return base_requirements;
+        }
+        return [...base_requirements, TUPAD_FIT_TO_WORK_REQUIREMENT];
+    }, [selected_program, should_show_tupad_fit_to_work]);
+
+    const upload_reqs = useMemo(() => {
+        const base_upload_requirements = UPLOAD_REQUIREMENTS[api_key];
+        if (api_key !== 'tupad' || !base_upload_requirements || !should_show_tupad_fit_to_work) {
+            return base_upload_requirements;
+        }
+        return [...base_upload_requirements, TUPAD_FIT_TO_WORK_UPLOAD_REQUIREMENT];
+    }, [api_key, should_show_tupad_fit_to_work]);
 
     // Compute completed count for each program (for tab badges)
     const get_completed_count = (program_key: ProgramKey) => {
@@ -312,8 +351,7 @@ applicationStatusAPI.getStatus(user_id, token)
                                 const spes_form_complete = form_key ? spes_completion[form_key] : false;
                                 const has_data = form_key ? has_spes_form_data(read_spes_draft(), form_key) : false;
 
-                                const program_status = get_requirement_status(selected_program);
-                                const submitted_set = new Set(program_status?.submittedTypes ?? []);
+                                const submitted_set = new Set(selected_program_status?.submittedTypes ?? []);
                                 const doc_uploaded = req.document_type ? submitted_set.has(req.document_type) : false;
 
                                 const app_submitted = is_online_form || is_form_item

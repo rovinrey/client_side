@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 const API_URL = `${API_BASE_URL}/api/programs`;
 
@@ -17,7 +18,7 @@ export interface ActiveProgram {
 
 export const programsAPI = {
   getActiveByType: async (programType: string): Promise<ActiveProgram[]> => {
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const response = await axios.get<ActiveProgram[]>(
       `${API_URL}/active/${encodeURIComponent(programType)}`,
@@ -27,7 +28,7 @@ export const programsAPI = {
   },
 
   getReadyPrograms: async (): Promise<ActiveProgram[]> => {
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const response = await axios.get<ActiveProgram[]>(
       `${API_URL}/ready`,

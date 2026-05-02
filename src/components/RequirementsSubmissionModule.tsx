@@ -6,18 +6,17 @@ import {
     ChevronRight,
     ClipboardList,
     FileText,
-    FolderOpen,
     Loader2,
     Upload,
     XCircle,
 } from 'lucide-react';
 
+import { storageGet } from '../utils/storage';
 import documentsApi, { type ProgramDocumentStatus } from '../api/documents.api';
 import spesDocumentsApi, { type DocumentFieldId } from '../api/spesDocuments.api';
 import type { ProgramKey } from '../constants/beneficiaryPrograms';
 
 // ─── Program metadata ────────────────────────────────────────────────────────
-// huhu
 interface ProgramMeta {
     key: ProgramKey;
     apiKey: string;
@@ -45,6 +44,7 @@ const REQUIREMENT_LABELS: Record<string, Record<string, string>> = {
         barangay_certification: 'Barangay Certification',
         application_form: 'Application Form',
         birth_certificate: 'Birth Certificate',
+        fit_to_work: 'Fit to Work Certificate',
     },
     dilp: {
         valid_government_id: 'Valid Government ID',
@@ -106,7 +106,7 @@ interface RequirementsSubmissionModuleProps {
 
 const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> = ({ compact = false }) => {
     const navigate = useNavigate();
-    const token = localStorage.getItem('token') ?? '';
+    const token = storageGet('token') ?? '';
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -226,40 +226,15 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
     }
 
     const overall = getOverallStats();
-    const overallPct = overall.total > 0 ? Math.round((overall.submitted / overall.total) * 100) : 0;
     const allComplete = overall.completedPrograms === overall.totalPrograms;
 
     // ── Compact mode (for dashboard) ─────────────────────────────────────────
 
     if (compact) {
         return (
-            <div className="space-y-4">
-                {/* Overall progress summary */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${allComplete ? 'bg-emerald-100' : 'bg-teal-100'}`}>
-                            <FolderOpen className={`h-4 w-4 ${allComplete ? 'text-emerald-600' : 'text-teal-600'}`} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-semibold text-gray-800">All Requirements</p>
-                            <p className="text-xs text-gray-500">{overall.submitted} of {overall.total} documents submitted</p>
-                        </div>
-                    </div>
-                    <span className={`text-lg font-bold ${allComplete ? 'text-emerald-600' : 'text-gray-900'}`}>
-                        {overallPct}%
-                    </span>
-                </div>
-
-                {/* Overall progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                    <div
-                        className={`h-2.5 rounded-full transition-all duration-700 ease-out ${allComplete ? 'bg-emerald-500' : 'bg-teal-600'}`}
-                        style={{ width: `${overallPct}%` }}
-                    />
-                </div>
-
+            <div className="space-y-5 bg-white p-5 rounded-xl border border-gray-100 shadow-sm select-none">
                 {/* Per-program mini rows */}
-                <div className="space-y-2">
+                <div className="space-y-2 pt-1">
                     {PROGRAMS.map((program) => {
                         const ps = getProgramStatus(program);
                         const pct = ps.totalRequired > 0 ? Math.round((ps.submittedCount / ps.totalRequired) * 100) : 0;
@@ -269,7 +244,7 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                                 key={program.key}
                                 type="button"
                                 onClick={() => navigateToRequirements(program.key)}
-                                className="w-full flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 hover:border-gray-300 hover:shadow-sm transition-all text-left group"
+                                className="w-full flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 hover:border-gray-200 hover:shadow-sm transition-all text-left group select-none"
                             >
                                 <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${program.bgColor}`}>
                                     {ps.isComplete ? (
@@ -280,28 +255,28 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-semibold text-gray-800">{program.shortLabel}</span>
-                                        <span className={`text-xs font-bold ${ps.isComplete ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                        <span className="text-xs font-bold text-slate-800 tracking-tight">{program.shortLabel}</span>
+                                        <span className={`text-xs font-bold ${ps.isComplete ? 'text-emerald-600' : 'text-slate-500'}`}>
                                             {ps.submittedCount}/{ps.totalRequired}
                                         </span>
                                     </div>
-                                    <div className="mt-1 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                    <div className="mt-1.5 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                         <div
-                                            className={`h-1.5 rounded-full transition-all duration-500 ${ps.isComplete ? 'bg-emerald-500' : 'bg-teal-500'}`}
+                                            className={`h-1.5 rounded-full transition-all duration-500 ease-in-out ${ps.isComplete ? 'bg-emerald-500' : 'bg-slate-300'}`}
                                             style={{ width: `${pct}%` }}
                                         />
                                     </div>
                                 </div>
-                                <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
                             </button>
                         );
                     })}
                 </div>
 
                 {allComplete && (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-200">
-                        <CheckCircle2 className="h-4 w-4" />
-                        All program requirements are complete!
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                        All program requirements are completed!
                     </div>
                 )}
             </div>
@@ -312,55 +287,11 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
 
     return (
         <div className="w-full space-y-5">
-            {/* ── Overall Progress Header ── */}
-            <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-200">
-                            <Upload className="h-3 w-3" />
-                            Requirements Submission
-                        </div>
-                        <h2 className="mt-2 text-xl font-bold text-gray-900">Submit Your Requirements</h2>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Upload required documents for each program. Track your submission progress across all programs below.
-                        </p>
-                    </div>
-                    <div className="text-center sm:text-right">
-                        <p className={`text-3xl font-black ${allComplete ? 'text-emerald-600' : 'text-gray-900'}`}>{overallPct}%</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                            {overall.submitted} of {overall.total} documents
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mt-4 w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                        className={`h-3 rounded-full transition-all duration-700 ease-out ${allComplete ? 'bg-emerald-500' : 'bg-teal-600'}`}
-                        style={{ width: `${overallPct}%` }}
-                    />
-                </div>
-
-                {/* Programs completion badges */}
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {PROGRAMS.map((program) => {
-                        const ps = getProgramStatus(program);
-                        return (
-                            <span
-                                key={`badge-${program.key}`}
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-                                    ps.isComplete
-                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                        : ps.submittedCount > 0
-                                            ? `${program.bgColor} ${program.badgeText} ${program.ringColor}`
-                                            : 'bg-gray-50 text-gray-500 ring-gray-200'
-                                }`}
-                            >
-                                {ps.isComplete ? <CheckCircle2 className="h-3 w-3" /> : <ClipboardList className="h-3 w-3" />}
-                                {program.shortLabel} {ps.submittedCount}/{ps.totalRequired}
-                            </span>
-                        );
-                    })}
-                </div>
+            <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Program Requirements</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                    Upload and manage the required documents for each available program.
+                </p>
             </div>
 
             {/* ── Per-Program Accordion ── */}
@@ -399,12 +330,12 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                     return (
                         <div
                             key={program.key}
-                            className={`rounded-2xl border-2 transition-all duration-200 ${
+                            className={`rounded-2xl border transition-all duration-200 select-none ${
                                 ps.isComplete
                                     ? 'border-emerald-200 bg-emerald-50/30'
                                     : isExpanded
                                         ? 'border-teal-300 bg-white shadow-md'
-                                        : 'border-gray-200 bg-white hover:border-gray-300'
+                                        : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                         >
                             {/* Accordion header */}
@@ -414,34 +345,34 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                                 className="w-full flex items-center justify-between px-4 py-4 sm:px-5 text-left"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                                        ps.isComplete ? 'bg-emerald-100' : program.bgColor
+                                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                                        ps.isComplete ? 'bg-emerald-50' : program.bgColor
                                     }`}>
                                         {ps.isComplete ? (
-                                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                            <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                                         ) : (
                                             <FileText className={`h-5 w-5 ${program.color}`} />
                                         )}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-sm font-bold text-gray-900">{program.shortLabel}</span>
+                                            <span className="text-sm font-bold text-slate-800">{program.shortLabel}</span>
                                             {ps.isComplete ? (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 uppercase tracking-wide">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
                                                     <CheckCircle2 className="h-3 w-3" />
                                                     Complete
                                                 </span>
                                             ) : ps.submittedCount > 0 ? (
-                                                <span className={`inline-flex items-center rounded-full ${program.badgeBg} px-2 py-0.5 text-[10px] font-semibold ${program.badgeText} uppercase tracking-wide`}>
+                                                <span className={`inline-flex items-center rounded-full ${program.badgeBg} px-2 py-0.5 text-[10px] font-bold ${program.badgeText} uppercase tracking-wide`}>
                                                     In Progress
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                                                     Not Started
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="mt-0.5 text-xs text-gray-500">
+                                        <p className="mt-0.5 text-xs font-medium text-slate-500">
                                             {ps.submittedCount} of {ps.totalRequired} documents submitted
                                         </p>
                                     </div>
@@ -450,55 +381,54 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                                 <div className="flex items-center gap-3">
                                     {/* Mini progress bar */}
                                     <div className="hidden sm:block w-24">
-                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                             <div
-                                                className={`h-2 rounded-full transition-all duration-500 ${ps.isComplete ? 'bg-emerald-500' : 'bg-teal-500'}`}
+                                                className={`h-2 rounded-full transition-all duration-500 ease-in-out ${ps.isComplete ? 'bg-emerald-500' : 'bg-teal-500'}`}
                                                 style={{ width: `${pct}%` }}
                                             />
                                         </div>
                                     </div>
-                                    <span className={`text-sm font-bold ${ps.isComplete ? 'text-emerald-600' : 'text-gray-700'}`}>
+                                    <span className={`text-sm font-bold ${ps.isComplete ? 'text-emerald-600' : 'text-slate-700'}`}>
                                         {pct}%
                                     </span>
                                     <ChevronDown
-                                        className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                        className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                                     />
                                 </div>
                             </button>
 
                             {/* Expanded content */}
                             {isExpanded && (
-                                <div className="border-t border-gray-200 px-4 py-4 sm:px-5 space-y-4">
+                                <div className="border-t border-slate-100 px-4 py-4 sm:px-5 space-y-4 bg-slate-50/50">
                                     {/* Requirements checklist */}
                                     <div>
-                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 select-none">
                                             Requirements Checklist
                                         </h4>
                                         <ul className="space-y-1.5">
                                             {checklistItems.map((item) => (
                                                 <li
                                                     key={item.id}
-                                                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors ${
-                                                        item.submitted ? 'bg-emerald-50' : 'bg-gray-50'
+                                                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors border ${
+                                                        item.submitted ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-200'
                                                     }`}
                                                 >
                                                     {item.submitted ? (
                                                         <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                                                     ) : (
-                                                        <XCircle className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                                                        <XCircle className="h-4 w-4 text-slate-300 flex-shrink-0" />
                                                     )}
                                                     <span className={`text-sm font-medium ${
-                                                        item.submitted ? 'text-emerald-800' : 'text-gray-600'
+                                                        item.submitted ? 'text-emerald-800' : 'text-slate-600'
                                                     }`}>
                                                         {item.label}
                                                     </span>
-                                                    {item.submitted && (
-                                                        <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                                    {item.submitted ? (
+                                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-emerald-600">
                                                             Submitted
                                                         </span>
-                                                    )}
-                                                    {!item.submitted && (
-                                                        <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                                    ) : (
+                                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                                             Missing
                                                         </span>
                                                     )}
@@ -507,11 +437,11 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                                         </ul>
                                     </div>
 
-                                    {/* Action button — navigate to the upload page */}
+                                    {/* Action button */}
                                     <button
                                         type="button"
                                         onClick={() => navigateToRequirements(program.key)}
-                                        className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-colors ${
+                                        className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-bold tracking-tight transition-colors ${
                                             ps.isComplete
                                                 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                                                 : 'bg-teal-600 text-white hover:bg-teal-700'
@@ -531,19 +461,6 @@ const RequirementsSubmissionModule: React.FC<RequirementsSubmissionModuleProps> 
                     );
                 })}
             </div>
-
-            {/* ── All complete banner ── */}
-            {allComplete && (
-                <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 mb-3">
-                        <CheckCircle2 className="h-7 w-7 text-emerald-600" />
-                    </div>
-                    <p className="text-base font-bold text-emerald-800">All Requirements Submitted!</p>
-                    <p className="mt-1 text-sm text-emerald-600">
-                        You have submitted all required documents for every program. Your applications are ready for review.
-                    </p>
-                </div>
-            )}
         </div>
     );
 };

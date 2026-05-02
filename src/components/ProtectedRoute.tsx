@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { Navigate } from 'react-router-dom';
+import { storageGet } from '../utils/storage';
 
 interface ProtectedRouteProps {
   children: JSX.Element;
@@ -8,7 +9,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
   // 1. Get the stored user data and role
-  const userRole = localStorage.getItem('role');
+  const userRole = storageGet('role');
   
   // 2. If no role exists, the user isn't logged in
   if (!userRole) {

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle, XCircle, Loader, UserCheck, UserX, Calendar } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from "../../../api/config";
+import { storageGet } from "../../../utils/storage";
 
 interface BeneficiaryAttendance {
     user_id: number;
@@ -29,7 +30,7 @@ const ProgramAttendance = () => {
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
     const isStaff = location.pathname.startsWith("/staff");

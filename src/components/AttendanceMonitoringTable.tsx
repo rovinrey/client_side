@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 interface AttendanceRecord {
     id: number;
@@ -31,7 +32,7 @@ const AttendanceMonitoringTable = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
 
     useEffect(() => {
         fetchAttendanceRecords();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
+import { storageGet } from '../../../utils/storage';
 import { type ValidationError, validateTupadForm } from '../../../utils/validation';
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
@@ -96,10 +97,10 @@ function TupadForm({ programId }: { programId?: number | null }) {
         try {
             // 2. Defensive Programming: Safely retrieve the user ID. 
             // Often, devs store the whole user object as JSON, not just the ID. We check for both.
-            let userId = localStorage.getItem('user_id');
-            
+            let userId = storageGet('user_id');
+
             if (!userId) {
-                // Fallback: Check if they stored a user object instead
+                // Fallback: legacy whole-user JSON (if present)
                 const userObjStr = localStorage.getItem('user');
                 if (userObjStr) {
                     try {
@@ -117,7 +118,7 @@ function TupadForm({ programId }: { programId?: number | null }) {
                 return; 
             }
 
-            const token = localStorage.getItem('token');
+            const token = storageGet('token');
             if (!token) {
                 alert('Session expired. Please login again.');
                 return;

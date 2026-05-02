@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { LayoutGrid, Clock, CheckCircle2, Clock3 } from "lucide-react";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
+import { logout } from '../../utils/auth';
 
 import TupadForm from "./forms/TUPADform";
 import SpesForm from "./forms/SPES/SpesOfficialForms";
@@ -124,9 +126,9 @@ setProgramsLoading(true);
 
 useEffect(() => {
         const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            const role = localStorage.getItem('role');
-            const userId = localStorage.getItem('user_id');
+            const token = storageGet('token');
+            const role = storageGet('role');
+            const userId = storageGet('user_id');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');
@@ -144,7 +146,7 @@ useEffect(() => {
                 if (profileRes.status === 'fulfilled') {
                     setUser(profileRes.value.data);
                 } else if (profileRes.reason?.response?.status === 401) {
-                    localStorage.clear();
+                    logout();
                     navigate('/login');
                     return;
                 }

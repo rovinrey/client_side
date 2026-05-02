@@ -4,6 +4,7 @@ import PesoLogo from '../components/PesoLogo';
 import { Link, useNavigate } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { setAuth } from "../utils/auth";
+import { storageSet } from "../utils/storage";
 
 import { API_BASE_URL } from '../api/config';
 
@@ -70,8 +71,8 @@ function Login() {
             }
 
 setAuth(token, userRole as "admin" | "beneficiary" | "staff");
-            localStorage.setItem("user_name", user.user_name);
-            localStorage.setItem("user_id", String(userId));
+            storageSet("user_name", user.user_name);
+            storageSet("user_id", String(userId));
 
             navigate(ROLE_REDIRECTS[userRole], { replace: true });
         } catch (err: unknown) {

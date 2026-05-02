@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import documentsApi from '../api/documents.api';
 import spesDocumentsApi, { type DocumentFieldId } from '../api/spesDocuments.api';
 import type { ProgramKey } from '../constants/beneficiaryPrograms';
+import { storageGet } from '../utils/storage';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const GENERIC_REQUIREMENT_LABELS: Record<string, Record<string, string>> = {
         barangay_certification: 'Barangay Certification',
         application_form: 'Application Form',
         birth_certificate: 'Birth Certificate',
+        fit_to_work: 'Fit to Work Certificate',
     },
     dilp: {
         valid_government_id: 'Valid Government ID',
@@ -84,7 +86,7 @@ const SPES_FIELD_IDS = Object.keys(SPES_REQUIREMENT_LABELS) as DocumentFieldId[]
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useRequirementStatus(): UseRequirementStatusReturn {
-const token = localStorage.getItem('token') ?? '';
+const token = storageGet('token') ?? '';
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

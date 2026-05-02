@@ -3,6 +3,7 @@ import { Loader } from "lucide-react";
 import StatCard from "../../components/Card";
 import axios from "axios";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
 
 interface Application {
     id: number;
@@ -18,7 +19,7 @@ interface Application {
 }
 
 export default function StaffDashboard() {
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     const [stats, setStats] = useState({

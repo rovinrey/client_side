@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 const API_URL = `${API_BASE_URL}/api/beneficiaries`;
 
@@ -45,7 +46,7 @@ export interface DuplicateCheckResult {
 export const beneficiaryEnrollAPI = {
     // Existing
     enroll: async (applicationId: number, programId: number) => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const response = await axios.post(`${API_URL}/enroll`, { applicationId, programId }, { headers });
         return response.data;
@@ -53,7 +54,7 @@ export const beneficiaryEnrollAPI = {
 
     // Beneficiary Profiling
     getMyProfile: async (): Promise<BeneficiaryProfile> => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         const response = await axios.get<BeneficiaryProfile>(`${API_URL}/profile/me`, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -61,7 +62,7 @@ export const beneficiaryEnrollAPI = {
     },
 
     updateMyProfile: async (data: Partial<BeneficiaryProfile>): Promise<{ message: string }> => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         const response = await axios.put(`${API_URL}/profile/me`, data, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -69,7 +70,7 @@ export const beneficiaryEnrollAPI = {
     },
 
     checkDuplicate: async (birthDate: string): Promise<DuplicateCheckResult> => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         const response = await axios.post<DuplicateCheckResult>(
             `${API_URL}/profile/check-duplicate`,
             { birth_date: birthDate },
@@ -79,7 +80,7 @@ export const beneficiaryEnrollAPI = {
     },
 
     getMyProgramHistory: async (): Promise<{ history: ProgramHistoryEntry[] }> => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         const response = await axios.get<{ history: ProgramHistoryEntry[] }>(
             `${API_URL}/profile/program-history`,
             { headers: { Authorization: `Bearer ${token}` } }

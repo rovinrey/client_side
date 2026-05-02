@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { storageGet } from '../../../utils/storage';
 import { 
   Users, 
   UserPlus, 
@@ -57,9 +58,10 @@ const BeneficiaryManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Helper for Auth Headers
-  const getAuthHeaders = () => ({
-Authorization: `Bearer ${localStorage.getItem('token')}`
-  });
+  const getAuthHeaders = () => {
+    const token = storageGet('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   // --- Data Fetching Logic ---
 

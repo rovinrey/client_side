@@ -1,12 +1,13 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 const API_URL = `${API_BASE_URL}/api/applications`;
 
 export const gipAPI = {
   submitGipApplication: async (data: any) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = storageGet('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.post(`${API_URL}/apply/gip`, data, { headers });
       return response.data;

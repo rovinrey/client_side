@@ -3,7 +3,7 @@ import { ArrowLeft, Loader, Pencil, Save, X, FileSpreadsheet, Printer, CheckCirc
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
-import DocumentVerification from '../../../components/DocumentVerification';
+import { storageGet } from '../../../utils/storage';
 
 // ─── Types ───────────────────────────────────────────
 interface ApplicationBase {
@@ -50,7 +50,7 @@ interface ApplicationDetailsResponse {
 }
 
 const getAuthHeaders = () => {
-const token = localStorage.getItem("token");
+    const token = storageGet("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -302,7 +302,7 @@ function DocumentsSection({
     onReject: (documentId: number) => void;
     onRefresh: () => void;
 }) {
-const token = localStorage.getItem("token") || "";
+const token = storageGet("token") || "";
     const replaceInputRef = useRef<HTMLInputElement>(null);
 
     const [previewDoc, setPreviewDoc] = useState<DocumentInfo | null>(null);
@@ -756,26 +756,50 @@ function ApplicationDetails() {
         }
     }, [details?.application?.user_id]);
 
-    // ── Annex D Export ──
-    const handleAnnexDExport = async () => {
+    const ANNEX_EXPORT_BY_PROGRAM: Record<
+        string,
+        { label: string; path: string; downloadPrefix: string }
+    > = {
+        tupad: {
+            label: "Export Annex D (TUPAD)",
+            path: "/api/applications/annex-d/export",
+            downloadPrefix: "Annex_D_TUPAD",
+        },
+        spes: {
+            label: "Export Annex B (SPES)",
+            path: "/api/applications/annex-b/export",
+            downloadPrefix: "Annex_B_SPES",
+        },
+        gip: {
+            label: "Export Annex H (GIP)",
+            path: "/api/applications/annex-h/export",
+            downloadPrefix: "Annex_H_GIP",
+        },
+        job_seekers: {
+            label: "Export Annex L (Job seekers)",
+            path: "/api/applications/annex-l/export",
+            downloadPrefix: "Annex_L_JobSeekers",
+        },
+    };
+
+    const handleAnnexExcelExport = async () => {
+        const pt = details?.application.program_type || "";
+        const cfg = ANNEX_EXPORT_BY_PROGRAM[pt];
+        if (!cfg) return;
         setExporting(true);
         try {
-            const programType = details?.application.program_type || "tupad";
-            const res = await axios.get(
-                `${API_BASE_URL}/api/applications/annex-d/export?programType=${programType}`,
-                {
-                    headers: getAuthHeaders(),
-                    responseType: "blob",
-                }
-            );
+            const res = await axios.get(`${API_BASE_URL}${cfg.path}`, {
+                headers: getAuthHeaders(),
+                responseType: "blob",
+            });
             const url = URL.createObjectURL(res.data);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `Annex_D_${programType.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            a.download = `${cfg.downloadPrefix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
-            alert("Failed to export Annex D.");
+            alert("Export failed. Ensure you are logged in as admin and try again.");
         } finally {
             setExporting(false);
         }
@@ -798,7 +822,10 @@ function ApplicationDetails() {
                         <ArrowLeft size={16} /> Back
                     </button>
                     <h1 className="text-2xl font-bold text-gray-900">Application Details</h1>
-                    <p className="text-sm text-gray-500">View, edit submitted data, and export to Annex D format</p>
+                    <p className="text-sm text-gray-500">
+                        View, edit submitted data, and export approved beneficiaries to the matching PESO annex Excel
+                        (Annex D–TUPAD, B–SPES, H–GIP, L–job seekers).
+                    </p>
                 </div>
 
                 {details && (
@@ -809,14 +836,19 @@ function ApplicationDetails() {
                         >
                             <Printer size={16} /> Print
                         </button>
-                        <button
-                            onClick={handleAnnexDExport}
-                            disabled={exporting}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-medium text-sm shadow-md shadow-green-100 disabled:opacity-50"
-                        >
-                            <FileSpreadsheet size={16} />
-                            {exporting ? "Exporting..." : "Export Annex D"}
-                        </button>
+                        {details.application.program_type &&
+                            ANNEX_EXPORT_BY_PROGRAM[details.application.program_type] && (
+                                <button
+                                    onClick={handleAnnexExcelExport}
+                                    disabled={exporting}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-medium text-sm shadow-md shadow-green-100 disabled:opacity-50"
+                                >
+                                    <FileSpreadsheet size={16} />
+                                    {exporting
+                                        ? "Exporting..."
+                                        : ANNEX_EXPORT_BY_PROGRAM[details.application.program_type].label}
+                                </button>
+                            )}
                     </div>
                 )}
             </div>
@@ -875,36 +907,6 @@ function ApplicationDetails() {
                         onReject={handleRejectDocument}
                         onRefresh={fetchDocuments}
                     />
-
-{/* Document Verification Section */}
-                    {documents.length > 0 && (
-                        <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                            <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
-                                <h2 className="text-lg font-semibold text-gray-900">Document Verification</h2>
-                                <p className="text-xs text-gray-500 mt-1">Review and verify submitted documents</p>
-                            </div>
-                            <div className="px-6 py-4">
-                                <DocumentVerification
-                                    applicationId={Number(applicationId)}
-                                    documents={documents.map((doc) => ({
-                                        document_id: doc.document_id,
-                                        document_type: doc.document_type,
-                                        original_name: doc.original_name,
-                                        file_size: doc.file_size,
-                                        mime_type: doc.mime_type,
-                                        uploaded_at: doc.uploaded_at,
-                                        status: doc.is_verified === 1 ? 'verified' : doc.is_verified === 2 ? 'rejected' : 'pending',
-                                        verified_by: doc.verified_by,
-                                        verified_at: doc.verified_at,
-                                        remarks: null,
-                                        url: doc.url,
-                                    }))}
-userRole={localStorage.getItem('role') || 'beneficiary'}
-                                    onVerificationChange={fetchDocuments}
-                                />
-                            </div>
-                        </section>
-                    )}
 
                     {/* Editable sections */}
                     <EditableSection

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 interface AttendanceRecord {
     attendance_id: number;
@@ -26,7 +27,7 @@ const Attendance = () => {
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Bearer ${token}` }

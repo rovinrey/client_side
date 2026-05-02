@@ -3,6 +3,8 @@ import { Loader } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet, storageRemove } from '../../utils/storage';
+import { logout } from '../../utils/auth';
 
 interface Application {
     id: number;
@@ -18,7 +20,7 @@ interface Application {
 
 const StaffApplications = () => {
     const navigate = useNavigate();
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     const [applications, setApplications] = useState<Application[]>([]);
@@ -40,10 +42,9 @@ const StaffApplications = () => {
     }, [selectedFilter, selectedProgram]);
 
 const handleUnauthorized = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("user_name");
-        localStorage.removeItem("user_id");
+        storageRemove("user_name");
+        storageRemove("user_id");
+        logout();
         navigate("/login");
     };
 

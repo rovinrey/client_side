@@ -4,6 +4,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
 import EnrollmentModal from '../../../components/EnrollmentModal';
+import { storageGet, storageRemove } from '../../../utils/storage';
+import { logout } from '../../../utils/auth';
 
 interface Application {
     id: number;
@@ -15,13 +17,16 @@ interface Application {
     address: string | null;
     status: string;
     applied_at: string;
-    is_enrolled?: boolean; // NEW: Track enrollment status
-    enrollment_program_id?: number; // NEW: Track which program they're enrolled in
+    /** 1/0 from API when active program_enrollees row exists */
+    is_enrolled?: boolean | number;
+    enrollment_program_id?: number;
 }
+
+const isActiveEnrollment = (app: Application) => Number(app.is_enrolled) === 1;
 
 const ApplicationApproval = () => {
     const navigate = useNavigate();
-const token = localStorage.getItem('token');
+const token = storageGet('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(false);
@@ -47,13 +52,13 @@ const token = localStorage.getItem('token');
         fetchApplications();
     }, [selectedFilter, selectedProgram]);
 
-const role = localStorage.getItem('role');
+const role = storageGet('role');
+    const canManageApplications = role === 'admin' || role === 'staff';
 
     const handleUnauthorized = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('user_name');
-        localStorage.removeItem('user_id');
+        storageRemove('user_name');
+        storageRemove('user_id');
+        logout();
         navigate('/login');
     };
 
@@ -152,12 +157,10 @@ const role = localStorage.getItem('role');
             );
 
             if (response.status === 200) {
-                const app = applications.find(a => a.id === applicationId);
-                if (app) {
-                    setSelectedApplicationForEnrollment(app);
-                    setEnrollmentModalOpen(true);
-                }
-                fetchApplications(); // Refresh the list
+                fetchApplications();
+                alert(
+                    'Application approved. Open the Approved tab and click Enroll when you are ready to assign this beneficiary to a specific program.'
+                );
             }
         } catch (error: any) {
             console.error("Error approving application:", error);
@@ -173,45 +176,44 @@ const role = localStorage.getItem('role');
 
     // FIXED: Handle enrollment completion with better state management
     const handleEnrollmentComplete = async (programId: number) => {
-        if (!selectedApplicationForEnrollment) return;
-        
+        if (!selectedApplicationForEnrollment) {
+            throw new Error('No application selected');
+        }
+
         setEnrollingId(selectedApplicationForEnrollment.id);
-        
+
         try {
-            // Call API to confirm enrollment
-            const response = await axios.post(
+            await axios.post(
                 `${API_BASE_URL}/api/beneficiaries/enroll`,
                 { applicationId: selectedApplicationForEnrollment.id, programId },
                 { headers: authHeaders }
             );
-            
-            if (response.status === 200) {
-                // Update local state to show "Enrolled" button
-                setApplications(prev => prev.map(app => 
-                    app.id === selectedApplicationForEnrollment.id 
-                        ? { 
-                            ...app, 
-                            is_enrolled: true, 
-                            enrollment_program_id: programId 
+
+            setApplications((prev) =>
+                prev.map((app) =>
+                    app.id === selectedApplicationForEnrollment.id
+                        ? {
+                              ...app,
+                              is_enrolled: true,
+                              enrollment_program_id: programId,
                           }
                         : app
-                ));
-                
-                // Show success message
-                alert(`✅ Successfully enrolled ${selectedApplicationForEnrollment.first_name} ${selectedApplicationForEnrollment.last_name} in the program!`);
-                
-                // Close modal
-                setEnrollmentModalOpen(false);
-                setSelectedApplicationForEnrollment(null);
-                
-                // Optional: Refresh the list after a short delay
-                setTimeout(() => {
-                    fetchApplications();
-                }, 1000);
-            }
+                )
+            );
+
+            alert(
+                `Successfully enrolled ${selectedApplicationForEnrollment.first_name} ${selectedApplicationForEnrollment.last_name} in the selected program.`
+            );
+
+            setEnrollmentModalOpen(false);
+            setSelectedApplicationForEnrollment(null);
+
+            setTimeout(() => {
+                fetchApplications();
+            }, 500);
         } catch (error: any) {
-            console.error("Error completing enrollment:", error);
-            alert(error.response?.data?.message || "Failed to enroll beneficiary. Please try again.");
+            console.error('Error completing enrollment:', error);
+            throw error;
         } finally {
             setEnrollingId(null);
         }
@@ -265,7 +267,9 @@ const role = localStorage.getItem('role');
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Application Reviews</h1>
-                <p className="text-gray-500 text-sm">Review and approve beneficiary applications</p>
+                <p className="text-gray-500 text-sm">
+                    Approve or reject applications; use the Approved tab to see every approved submission (including already enrolled). Enroll is only shown when the beneficiary is not yet actively enrolled in a program run.
+                </p>
             </div>
 
             {/* Program Filter + Search + Export */}
@@ -385,11 +389,10 @@ const role = localStorage.getItem('role');
                                             >
                                                 {app.status}
                                             </span>
-                                            {/* Backend now filters enrolled, so all Approved here are enrollable */}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center gap-2">
-                                                {app.status === "Pending" && role === 'admin' && (
+                                                {app.status === "Pending" && canManageApplications && (
                                                     <>
                                                         <button
                                                             onClick={(event) => {
@@ -424,31 +427,35 @@ const role = localStorage.getItem('role');
                                                     </>
                                                 )}
                                                 
-                                                {/* FIXED: Enroll button with proper states */}
-                                                {app.status === "Approved" && role === 'admin' && (
-                                                    // Backend filters out enrolled, so show active Enroll button
-                                                    <button
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setSelectedApplicationForEnrollment(app);
-                                                            setEnrollmentModalOpen(true);
-                                                        }}
-                                                        disabled={enrollingId === app.id}
-                                                        className="px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all hover:scale-105 disabled:opacity-50 text-xs font-medium flex items-center gap-1"
-                                                        title="Enroll Beneficiary in Program"
-                                                    >
-                                                        {enrollingId === app.id ? (
-                                                            <>
-                                                                <Loader size={14} className="animate-spin" />
-                                                                Enrolling...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <UserCheck size={14} />
-                                                                Enroll
-                                                            </>
-                                                        )}
-                                                    </button>
+                                                {app.status === "Approved" && canManageApplications && (
+                                                    isActiveEnrollment(app) ? (
+                                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800 border border-emerald-200">
+                                                            Enrolled
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setSelectedApplicationForEnrollment(app);
+                                                                setEnrollmentModalOpen(true);
+                                                            }}
+                                                            disabled={enrollingId === app.id}
+                                                            className="px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all hover:scale-105 disabled:opacity-50 text-xs font-medium flex items-center gap-1"
+                                                            title="Enroll Beneficiary in Program"
+                                                        >
+                                                            {enrollingId === app.id ? (
+                                                                <>
+                                                                    <Loader size={14} className="animate-spin" />
+                                                                    Enrolling...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <UserCheck size={14} />
+                                                                    Enroll
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )
                                                 )}
                                             </div>
                                         </td>

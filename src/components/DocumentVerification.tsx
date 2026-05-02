@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { CheckCircle, XCircle, Eye, Loader, AlertCircle, Clock } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 // Senior Note: Updated interface to match the SQL ENUM status
 interface Document {
@@ -34,7 +35,7 @@ const DocumentVerification: React.FC<DocumentVerificationProps> = ({
     const [rejecting, setRejecting] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const canVerify = userRole === 'admin' || userRole === 'staff';
 

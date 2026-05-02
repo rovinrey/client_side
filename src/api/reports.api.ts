@@ -1,8 +1,10 @@
+
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -199,6 +201,24 @@ export interface ConsolidatedReportResponse {
     programBudgets: ProgramBudgetRow[];
 }
 
+// ── NEW: Analytics Summary Report Types ─────────────────
+
+export interface SummaryBarangayRow {
+    barangay: string;
+    male: number;
+    female: number;
+    total: number;
+}
+
+export interface SummaryReportResponse {
+    barangays: SummaryBarangayRow[];
+    summary: {
+        total_male: number;
+        total_female: number;
+        grand_total: number;
+    };
+}
+
 // ── API Calls ────────────────────────────────────────
 
 const BASE = `${API_BASE_URL}/api/reports`;
@@ -271,6 +291,20 @@ export const getConsolidatedReport = async (startMonth: string, endMonth: string
     const { data } = await axios.get(`${BASE}/consolidated`, {
         headers: getAuthHeaders(),
         params: { startMonth, endMonth },
+    });
+    return data;
+};
+
+// ── NEW: Analytics Summary Report API ─────────────────
+
+export const getSummaryReport = async (program?: string, sort?: string, timeRange?: string): Promise<SummaryReportResponse> => {
+    const { data } = await axios.get(`${BASE}/summary`, {
+        headers: getAuthHeaders(),
+        params: {
+            ...(program && { program }),
+            ...(sort && { sort }),
+            ...(timeRange && { timeRange })
+        },
     });
     return data;
 };

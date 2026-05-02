@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { FileText, Download, Eye, Search, Filter, Loader, FileDown, Trash2, RefreshCw, Printer } from "lucide-react";
 import adminDocumentsApi, { type SpesDocumentRecord } from "../../../api/adminDocuments.api";
 import { API_BASE_URL } from '../../../api/config';
+import { storageGet } from '../../../utils/storage';
 
 const PROGRAM_OPTIONS = [
     { label: "All Programs", value: "" },
@@ -74,7 +75,7 @@ const guessMime = (url: string) => {
 };
 
 export default function DocumentsReview() {
-    const token = localStorage.getItem("token") || "";
+    const token = storageGet("token") || "";
 
     const [documents, setDocuments] = useState<UnifiedDocument[]>([]);
     const [loading, setLoading] = useState(true);

@@ -2,17 +2,18 @@
  * Authentication utilities for consistent user ID and token extraction
  * Works seamlessly for both local development and production
  */
+import { storageGet, storageRemove } from './storage';
 
 /**
- * Get authentication token from localStorage
+ * Get authentication token from sessionStorage (via abstraction layer)
  * @returns JWT token or null if not found
  */
 export const getAuthToken = (): string | null => {
-    return localStorage.getItem('token');
+    return storageGet('token');
 };
 
 /**
- * Safely extract user ID from localStorage with proper fallbacks
+ * Safely extract user ID from storage with proper fallbacks
  * @returns user_id as number or null if not found
  */
 export const getUserId = (): number | null => {
@@ -26,14 +27,14 @@ export const getUserId = (): number | null => {
     };
 
     // 1. Primary source: user_id directly
-    const userId = localStorage.getItem('user_id');
+    const userId = storageGet('user_id');
     if (userId) {
         const validated = validateId(userId);
         if (validated) return validated;
     }
 
     // 2. Secondary source: extract from stored user object
-    const userJson = localStorage.getItem('user');
+    const userJson = storageGet('user');
     if (userJson) {
         try {
             const user = JSON.parse(userJson);
@@ -88,9 +89,9 @@ export const isUserAuthenticated = (): boolean => {
         const currentTime = Math.floor(Date.now() / 1000);
         if (payload.exp && payload.exp < currentTime) {
             // Silence-cleans token if expired on route check
-            localStorage.removeItem('token');
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('user');
+            storageRemove('token');
+            storageRemove('user_id');
+            storageRemove('user');
             return false;
         }
         return true;
@@ -105,10 +106,10 @@ export const isUserAuthenticated = (): boolean => {
  */
 export const handleSessionExpired = (message = 'Session expired. Please log in again.') => {
     alert(message);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('user');
-    localStorage.removeItem('role');
+    storageRemove('token');
+    storageRemove('user_id');
+    storageRemove('user');
+    storageRemove('role');
     
     // Redirect to login using a safe replacement
     window.location.replace('/login');

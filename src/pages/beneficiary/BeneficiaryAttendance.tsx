@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
 
 const API_BASE = API_BASE_URL;
 
@@ -30,7 +31,7 @@ function BeneficiaryAttendance() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const token = useMemo(() => localStorage.getItem('token'), []);
+    const token = useMemo(() => storageGet('token'), []);
 
     const authHeaders = useMemo(
         () => ({
@@ -70,7 +71,7 @@ function BeneficiaryAttendance() {
     };
 
     useEffect(() => {
-        const role = localStorage.getItem('role');
+        const role = storageGet('role');
         if (!token || role !== 'beneficiary') {
             navigate('/login');
             return;

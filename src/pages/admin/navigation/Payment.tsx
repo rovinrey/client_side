@@ -29,6 +29,7 @@ import {
     type Disbursement,
     type DailyWageSettings,
 } from '../../../api/payroll.api';
+import { storageGet } from '../../../utils/storage';
 
 const PROGRAM_LABELS: Record<string, string> = {
     tupad: "TUPAD",
@@ -84,6 +85,8 @@ const KpiCard = ({ label, value, sub }: { label: string; value: string; sub: str
 );
 
 const PaymentPage = () => {
+    const isAdmin = storageGet('role') === 'admin';
+
     const [month, setMonth] = useState<string>(toMonthInputDefault());
     const [programFilter, setProgramFilter] = useState<string>("all");
     const [loading, setLoading] = useState<boolean>(true);
@@ -304,7 +307,9 @@ const handleRelease = async () => {
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Payroll &amp; Payout Management</h1>
                         <p className="text-sm text-slate-600 md:text-base">
-                            Generate multi-program payroll from attendance, approve, release, and track disbursements.
+                            {isAdmin
+                                ? 'Official figures live in payroll_records: run Generate Payroll to upsert rows from Present attendance and program daily wages, then approve and release.'
+                                : 'Review saved payroll_records for the selected month. Contact an admin to generate or change payroll.'}
                         </p>
                     </div>
 
@@ -327,21 +332,23 @@ const handleRelease = async () => {
                             </select>
                         </div>
 
-                        <button onClick={handleGenerate} disabled={generating}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-                            {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                            Generate Payroll
-                        </button>
+                        {isAdmin && (
+                            <button onClick={handleGenerate} disabled={generating}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                                {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                Generate Payroll
+                            </button>
+                        )}
 
                         <button onClick={exportPayroll} disabled={!payroll || loading}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
-                            <Download size={14} /> Export CSV
+                            <Download size={14} /> Export payroll CSV
                         </button>
                     </div>
                 </div>
             </section>
 
-{/* KPI Cards */}
+            {/* KPI Cards */}
             <section className="grid grid-cols-2 gap-4 md:grid-cols-5">
                 <KpiCard label="Payroll Total" value={formatPeso(payroll?.totals?.total_payout || 0)} sub="All programs combined" />
                 <KpiCard label="Beneficiaries" value={String(payroll?.records?.length || 0)} sub="In current payroll" />
@@ -355,7 +362,11 @@ const handleRelease = async () => {
                 <div className="mb-4 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-semibold text-slate-900">Daily Wage Settings</h2>
-                        <p className="text-sm text-slate-500">Configure daily wage rate per program</p>
+                        <p className="text-sm text-slate-500">
+                            {isAdmin
+                                ? 'Configure daily wage per program; the next Generate Payroll run applies these rates to payroll_records.'
+                                : 'Rates shown are read-only. Contact an admin to change program daily wages.'}
+                        </p>
                     </div>
                 </div>
 
@@ -408,13 +419,15 @@ const handleRelease = async () => {
                                     ) : (
                                         <div className="flex items-center justify-between">
                                             <span className="text-lg font-bold text-slate-900">{formatPeso(currentWage)}</span>
-                                            <button
-                                                onClick={() => openProgramWageEditor(programKey, currentWage)}
-                                                className="p-1 text-amber-600 hover:bg-amber-100 rounded-lg"
-                                                title="Edit wage"
-                                            >
-                                                <Pencil size={14} />
-                                            </button>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => openProgramWageEditor(programKey, currentWage)}
+                                                    className="p-1 text-amber-600 hover:bg-amber-100 rounded-lg"
+                                                    title="Edit wage"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -442,6 +455,9 @@ const handleRelease = async () => {
                 <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
                         <h2 className="text-xl font-semibold text-slate-900">Payroll Records</h2>
+                        {payroll?.calculation_note && (
+                            <p className="text-xs text-slate-500 mt-0.5">{payroll.calculation_note}</p>
+                        )}
                         <p className="text-sm text-slate-500">
                             {reportLabel}
                             {pendingCount > 0 && <span className="ml-2 text-amber-600 font-semibold">({pendingCount} pending)</span>}
@@ -451,13 +467,13 @@ const handleRelease = async () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        {pendingCount > 0 && (
+                        {isAdmin && pendingCount > 0 && (
                             <button onClick={handleApprove} disabled={approving}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                                 {approving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve All
                             </button>
                         )}
-                        {approvedCount > 0 && (
+                        {isAdmin && approvedCount > 0 && (
                             <button onClick={handleRelease} disabled={releasing}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
                                 {releasing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} Release All
@@ -529,10 +545,12 @@ const handleRelease = async () => {
                         <h3 className="text-lg font-semibold text-slate-900">Disbursement Batch Log</h3>
                         <p className="text-xs text-slate-500">Track source, status, and release details per batch.</p>
                     </div>
-                    <button onClick={() => setShowDisModal(true)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-slate-800">
-                        <Plus size={14} /> New Batch
-                    </button>
+                    {isAdmin && (
+                        <button onClick={() => setShowDisModal(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-slate-800">
+                            <Plus size={14} /> New Batch
+                        </button>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -575,16 +593,19 @@ const handleRelease = async () => {
                                         <code className="rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">{d.reference_number || "—"}</code>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        {d.status === "Scheduled" && (
+                                        {isAdmin && d.status === "Scheduled" && (
                                             <button onClick={() => handleDisbursementStatus(d.disbursement_id, "Processing")}
                                                 className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600">Process</button>
                                         )}
-                                        {d.status === "Processing" && (
+                                        {isAdmin && d.status === "Processing" && (
                                             <button onClick={() => handleDisbursementStatus(d.disbursement_id, "Released")}
                                                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700">Release</button>
                                         )}
                                         {d.status === "Released" && (
                                             <span className="text-xs font-medium text-emerald-600">Done</span>
+                                        )}
+                                        {!isAdmin && (d.status === "Scheduled" || d.status === "Processing") && (
+                                            <span className="text-xs text-slate-500">Admin only</span>
                                         )}
                                     </td>
                                 </tr>

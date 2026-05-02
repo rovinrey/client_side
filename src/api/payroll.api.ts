@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -29,6 +30,9 @@ export interface PayrollResponse {
     records: PayrollRecord[];
     totals: { days_worked: number; total_payout: number };
     byProgram: Record<string, { count: number; days_worked: number; total_payout: number }>;
+    /** API hint: rows come from `payroll_records`. */
+    source?: string;
+    calculation_note?: string;
 }
 
 export interface Disbursement {
@@ -93,7 +97,12 @@ export const generatePayroll = async (month: string) => {
         { month },
         { headers: getAuthHeaders() }
     );
-    return data as { message: string; generated: number; month: string; dailyWage: number };
+    return data as {
+        message: string;
+        generated: number;
+        month: string;
+        dailyWages: Record<string, number>;
+    };
 };
 
 export const getPayroll = async (month: string, program?: string): Promise<PayrollResponse> => {

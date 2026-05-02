@@ -1,19 +1,20 @@
 // utils/auth.ts
+import { storageSet, storageRemove, storageGet } from './storage';
 
 export const setAuth = (token: string, role: "admin" | "beneficiary" | "staff") => {
-  localStorage.setItem("token", token);
-  localStorage.setItem("role", role);
+  storageSet("token", token);
+  storageSet("role", role);
 };
 
 export const logout = (): void => {
   // Instead of clearing everything (which might wipe out theme settings, etc.), 
   // explicitly remove auth-related keys.
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
+  storageRemove("token");
+  storageRemove("role");
 };
 
 export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem("token");
+  const token = storageGet("token");
   if (!token) return false;
 
   try {
@@ -36,7 +37,7 @@ export const isAuthenticated = (): boolean => {
 };
 
 export const getRole = (): "admin" | "beneficiary" | "staff" | null => {
-  const role = localStorage.getItem("role");
+  const role = storageGet("role");
   if (role === "admin" || role === "beneficiary" || role === "staff") return role;
   return null;
 };

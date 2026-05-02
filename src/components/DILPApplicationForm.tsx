@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api/config';
+import { storageGet } from '../utils/storage';
 
 interface DILPFormData {
     // Personal Information
@@ -52,7 +53,7 @@ const DILPApplicationForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const token = localStorage.getItem('token');
+    const token = storageGet('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

@@ -4,6 +4,7 @@ import StatCard from "../../../components/Card";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from '../../../api/config';
+import { storageGet } from '../../../utils/storage';
 
 interface Application {
     id: number;
@@ -20,7 +21,7 @@ interface Application {
 
 function AdminDashboard() {
     const navigate = useNavigate();
-const token = localStorage.getItem("token");
+const token = storageGet("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     // cards

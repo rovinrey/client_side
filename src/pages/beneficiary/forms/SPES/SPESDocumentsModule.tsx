@@ -4,6 +4,7 @@ import spesDocumentsApi, {
     type DocumentFieldId,
 } from '../../../../api/spesDocuments.api';
 import { API_BASE_URL } from '../../../../api/config';
+import { storageGet } from '../../../../utils/storage';
 
 // ─── Requirement definitions ─────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ interface SPESDocumentsModuleProps {
 }
 
 const SPESDocumentsModule: React.FC<SPESDocumentsModuleProps> = ({ onAllSubmitted }) => {
-    const token = localStorage.getItem('token') ?? '';
+    const token = storageGet('token') ?? '';
 
     const [appStatus, setAppStatus] = useState<ApplicationStatus>(null);
     const [docStates, setDocStates] = useState<Record<DocumentFieldId, DocState>>(() => {

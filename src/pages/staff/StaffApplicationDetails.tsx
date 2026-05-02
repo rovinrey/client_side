@@ -3,6 +3,7 @@ import { ArrowLeft, Loader } from "lucide-react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
 
 interface ApplicationBase {
     application_id: number;
@@ -31,7 +32,7 @@ interface ApplicationDetailsResponse {
 }
 
 const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
+    const token = storageGet("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from '../../api/config';
+import { storageGet } from '../../utils/storage';
 import { getMyPayouts, type BeneficiaryPayout } from '../../api/payroll.api';
 import {
     Banknote,
@@ -34,8 +35,8 @@ function BeneficiaryPayment() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            const role = localStorage.getItem('role');
+            const token = storageGet('token');
+            const role = storageGet('role');
 
             if (!token || role !== 'beneficiary') {
                 navigate('/login');

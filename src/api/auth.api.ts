@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { storageGet } from '../utils/storage';
 
 // Create a dedicated Axios instance for Auth operations
 const BASE_URL = API_BASE_URL || 'https://serverside-production-9b74.up.railway.app';
@@ -11,7 +12,7 @@ const api = axios.create({
 // Automatically attach the token to every request
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        const token = storageGet('token');
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
