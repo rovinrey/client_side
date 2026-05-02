@@ -4,45 +4,61 @@
  */
 
 /**
- * Safely extract user ID from localStorage with proper fallbacks
- * @returns user_id as number or null if not found
- */
-export const getUserId = (): number | null => {
-    // Primary source: user_id directly
-    const userId = localStorage.getItem('user_id');
-    if (userId) {
-        const parsed = Number(userId);
-        if (!isNaN(parsed) && parsed > 0) {
-            return parsed;
-        }
-    }
-
-    // Fallback: extract from stored user object
-    const userJson = localStorage.getItem('user');
-    if (userJson) {
-        try {
-            const user = JSON.parse(userJson);
-            const id = user?.id || user?.user_id;
-            if (id) {
-                const parsed = Number(id);
-                if (!isNaN(parsed) && parsed > 0) {
-                    return parsed;
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to parse user object:', e);
-        }
-    }
-
-    return null;
-};
-
-/**
  * Get authentication token from localStorage
  * @returns JWT token or null if not found
  */
 export const getAuthToken = (): string | null => {
     return localStorage.getItem('token');
+};
+
+/**
+ * Safely extract user ID from localStorage with proper fallbacks
+ * @returns user_id as number or null if not found
+ */
+export const getUserId = (): number | null => {
+    // Fallback Helper to parse and validate
+    const validateId = (id: unknown): number | null => {
+        const parsed = Number(id);
+        if (!isNaN(parsed) && parsed > 0) {
+            return parsed;
+        }
+        return null;
+    };
+
+    // 1. Primary source: user_id directly
+    const userId = localStorage.getItem('user_id');
+    if (userId) {
+        const validated = validateId(userId);
+        if (validated) return validated;
+    }
+
+    // 2. Secondary source: extract from stored user object
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+        try {
+            const user = JSON.parse(userJson);
+            const validated = validateId(user?.id || user?.user_id);
+            if (validated) return validated;
+        } catch (e) {
+            console.warn('Failed to parse user object:', e);
+        }
+    }
+
+    // 3. Last resort fallback: Extract from the JWT token directly
+    const token = getAuthToken();
+    if (token) {
+        try {
+            // Decode the payload of the JWT
+            const base64Payload = token.split('.')[1];
+            const payload = JSON.parse(atob(base64Payload));
+            const validated = validateId(payload?.id || payload?.user_id);
+            if (validated) return validated;
+        } catch (e) {
+            console.warn('Failed to decode user_id from token payload:', e);
+        }
+    }
+
+    return null;
 };
 
 /**
@@ -55,11 +71,32 @@ export const getAuthHeaders = () => {
 };
 
 /**
- * Validate user session (has both user_id and token)
- * @returns true if user is authenticated, false otherwise
+ * Validate user session (checks token format and expiration)
+ * @returns true if user is authenticated and token is valid, false otherwise
  */
 export const isUserAuthenticated = (): boolean => {
-    return !!getUserId() && !!getAuthToken();
+    const token = getAuthToken();
+    const userId = getUserId();
+    
+    if (!token || !userId) return false;
+
+    try {
+        // Decode to verify expiration
+        const base64Payload = token.split('.')[1];
+        const payload = JSON.parse(atob(base64Payload));
+        
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < currentTime) {
+            // Silence-cleans token if expired on route check
+            localStorage.removeItem('token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
 };
 
 /**
@@ -71,5 +108,8 @@ export const handleSessionExpired = (message = 'Session expired. Please log in a
     localStorage.removeItem('token');
     localStorage.removeItem('user_id');
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem('role');
+    
+    // Redirect to login using a safe replacement
+    window.location.replace('/login');
 };

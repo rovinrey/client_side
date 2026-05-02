@@ -1,6 +1,27 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
 
+// Create a dedicated Axios instance for Auth operations
+const BASE_URL = API_BASE_URL || 'https://serverside-production-9b74.up.railway.app';
+const api = axios.create({
+    baseURL: `${BASE_URL}/api/auth`,
+    withCredentials: true,
+});
+
+// Automatically attach the token to every request
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token && config.headers) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export interface CreateUserData {
     user_name: string;
     identifier: string;
@@ -9,18 +30,9 @@ export interface CreateUserData {
 }
 
 export const createUser = async (userData: CreateUserData): Promise<{ message: string }> => {
-const token = localStorage.getItem('token');
-    
-    const response = await axios.post(
-        `${API_BASE_URL}/api/auth/create-user`,
-        userData,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        }
-    );
-    
+    // Directly use the interceptor-configured api instance
+    const response = await api.post<{ message: string }>('/create-user', userData);
     return response.data;
 };
+
+export default createUser;
