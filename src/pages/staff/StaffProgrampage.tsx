@@ -1,6 +1,6 @@
 import { useState, useEffect, type JSX } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {  
+import {
   Calendar, 
   Users, 
   ChevronRight, 
@@ -10,7 +10,8 @@ import {
   CheckCircle,
   AlertCircle,
   FolderOpen,
-  ClipboardCheck
+  ClipboardCheck,
+  FileText,
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../api/config';
@@ -78,6 +79,11 @@ const StaffProgramPage = () => {
         const isStaff = location.pathname.startsWith('/staff');
         const basePath = isStaff ? '/staff/programs/attendance' : '/programs/attendance';
         navigate(`${basePath}?program=${encodeURIComponent(filterValue)}&name=${encodeURIComponent(programName)}`);
+    };
+
+    const handleCreateAnnexK = (programId: number) => {
+        const basePath = location.pathname.startsWith('/staff') ? '/staff/programs' : '/programs';
+        navigate(`${basePath}/${programId}/annex-k`);
     };
 
     const getAuthHeaders = () => {
@@ -234,19 +240,31 @@ const StaffProgramPage = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                            <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-3 justify-between items-center">
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
                                     <Users size={16} />
                                     <span>{filledSlots} {filledSlots === 1 ? 'beneficiary' : 'beneficiaries'} enrolled</span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <button 
+                                <div className="flex flex-wrap gap-3 items-center">
+                                    {prog.program_name.toUpperCase().includes('TUPAD') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCreateAnnexK(prog.id)}
+                                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100 transition"
+                                        >
+                                            <FileText size={16} />
+                                            Annex K
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
                                         onClick={() => handleViewAttendance(prog.program_name)}
                                         className="text-amber-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
                                     >
                                         Attendance <ClipboardCheck size={16} />
                                     </button>
-                                    <button 
+                                    <button
+                                        type="button"
                                         onClick={() => handleViewBeneficiaries(prog.program_name)}
                                         className="text-teal-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
                                     >

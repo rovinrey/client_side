@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, Loader, UserCheck, UserX, Calendar } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader, UserCheck, UserX, Calendar, FileText } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from "../../../api/config";
 import { storageGet } from "../../../utils/storage";
+import ProgramAnnexKReports from "../../../components/ProgramAnnexKReports";
+import ProgramAnnexKGenerator from "../../../components/ProgramAnnexKGenerator";
 
 interface BeneficiaryAttendance {
     user_id: number;
@@ -29,6 +31,7 @@ const ProgramAttendance = () => {
     const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+    const [programId, setProgramId] = useState<number | null>(Number(searchParams.get('program_id')) || null);
 
     const token = storageGet("token");
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -36,8 +39,14 @@ const ProgramAttendance = () => {
     const isStaff = location.pathname.startsWith("/staff");
 
     useEffect(() => {
-        if (programType) fetchAttendance();
-    }, [programType, selectedDate]);
+        setProgramId(Number(searchParams.get('program_id')) || null);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (programType) {
+            fetchAttendance();
+        }
+    }, [programType, selectedDate, programId]);
 
     useEffect(() => {
         if (toast) {
@@ -49,10 +58,11 @@ const ProgramAttendance = () => {
     const fetchAttendance = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(
-                `${API_BASE_URL}/api/attendance/program/${encodeURIComponent(programType)}`,
-                { headers: authHeaders, params: { date: selectedDate } }
-            );
+            const url = programId
+                ? `${API_BASE_URL}/api/attendance/program/id/${programId}`
+                : `${API_BASE_URL}/api/attendance/program/${encodeURIComponent(programType)}`;
+
+            const res = await axios.get(url, { headers: authHeaders, params: { date: selectedDate } });
             setRecords(res.data);
         } catch (err) {
             console.error("Error fetching program attendance:", err);
@@ -77,6 +87,18 @@ const ProgramAttendance = () => {
         } finally {
             setProcessingId(null);
         }
+    };
+
+    const handleCreateBeforeAfter = () => {
+        if (!programType) return;
+        const basePath = isStaff ? "/staff/before-after/liquidation" : "/before-after/liquidation";
+        navigate(`${basePath}?program=${encodeURIComponent(programType)}&name=${encodeURIComponent(programName)}`);
+    };
+
+    const handleViewAnnexK = () => {
+        if (!programId) return;
+        const basePath = isStaff ? "/staff/programs" : "/programs";
+        navigate(`${basePath}/${programId}/annex-k`);
     };
 
     const formatTime = (value: string | null) => {
@@ -109,14 +131,26 @@ const ProgramAttendance = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-gray-500" />
-                    <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-gray-500" />
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                    </div>
+                    {programType && (
+                        <button
+                            type="button"
+                            onClick={handleCreateBeforeAfter}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+                        >
+                            <FileText size={16} />
+                            Before / After
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -257,6 +291,75 @@ const ProgramAttendance = () => {
                         </table>
                     </div>
                 </div>
+            )}
+
+            {/* Annex K Report Generator */}
+            {programId && (
+                <ProgramAnnexKGenerator
+                    programId={programId}
+                    programName={programName}
+                />
+            )}
+
+            {/* Report Actions Table */}
+            {programType && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Program Report Actions</h2>
+                        <p className="text-sm text-gray-500">Create or view program reports related to this attendance session.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Report</th>
+                                    <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                                    <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                <tr>
+                                    <td className="px-6 py-4 font-medium text-gray-900">Before / After Liquidation</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">Open the program-specific before/after report form and export documentation.</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateBeforeAfter}
+                                            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+                                        >
+                                            <FileText size={16} />
+                                            Open
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-4 font-medium text-gray-900">TUPAD Annex K</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">View or create the Annex K report for this program.</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            type="button"
+                                            onClick={handleViewAnnexK}
+                                            disabled={!programId}
+                                            className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${programId ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                                        >
+                                            <FileText size={16} />
+                                            Open
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Annex K Reports */}
+            {programId && (
+                <ProgramAnnexKReports
+                    programId={programId}
+                    programType={programType}
+                    programName={programName}
+                />
             )}
 
             {/* Toast */}

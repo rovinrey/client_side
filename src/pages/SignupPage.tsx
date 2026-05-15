@@ -14,8 +14,6 @@ function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -159,10 +157,10 @@ function SignupPage() {
                         className={inputClass}
                     />
 
-{/* Password */}
+                    {/* Password */}
                     <div className="relative">
                         <input
-                            type={showPassword ? "text" : "password"}
+                            type= "text" 
                             name="password"
                             placeholder="Password"
                             value={formData.password}
@@ -172,13 +170,6 @@ function SignupPage() {
                             disabled={isLoading}
                             className={`${inputClass} pr-12`}
                         />
-
-                        <span
-                            className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
-                            onClick={() => setShowPassword((s) => !s)}
-                        >
-                            <EyeIcon open={showPassword} />
-                        </span>
                     </div>
 
                     {/* Confirm Password */}

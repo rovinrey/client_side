@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { storageGet } from '../../../utils/storage';
+import { API_BASE_URL } from '../../../api/config';
 import { 
   Users, 
   UserPlus, 
@@ -30,7 +31,33 @@ interface Application {
   status: string;
 }
 
-const API_BASE_URL = 'http://localhost:5000'; // Adjust to your server port
+type ProgramType = 'tupad' | 'spes' | 'dilp' | 'gip' | 'job_seekers' | string;
+
+interface EmploymentHistoryEntry {
+  application_id: number;
+  program_type: ProgramType;
+  application_status: string;
+  applied_at: string;
+  employment_status: string | null;
+  tupad: { occupation: string | null; monthly_income: number | string | null } | null;
+  gip: {
+    employment_status: string | null;
+    school: string | null;
+    course: string | null;
+    year_graduated: string | null;
+    education_level: string | null;
+    skills: string | null;
+  } | null;
+  job_seekers: {
+    employment_status: string | null;
+    preferred_work_type: string | null;
+    preferred_industry: string | null;
+    years_of_experience: string | null;
+    technical_skills: string | null;
+    expected_salary: string | null;
+    availability: string | null;
+  } | null;
+}
 
 const BeneficiaryManagement = () => {
   const [searchParams] = useSearchParams();
@@ -57,6 +84,13 @@ const BeneficiaryManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Employment history modal state
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Enrollee | null>(null);
+  const [employmentHistory, setEmploymentHistory] = useState<EmploymentHistoryEntry[]>([]);
+  const [employmentLoading, setEmploymentLoading] = useState(false);
+  const [employmentError, setEmploymentError] = useState<string | null>(null);
+
   // Helper for Auth Headers
   const getAuthHeaders = () => {
     const token = storageGet('token');
@@ -65,7 +99,7 @@ const BeneficiaryManagement = () => {
 
   // --- Data Fetching Logic ---
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!programId) {
       setError("No Program ID provided in URL.");
       setLoading(false);
@@ -101,17 +135,57 @@ const BeneficiaryManagement = () => {
       
       setApprovedApps(availableToEnroll);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Fetch Error:", err);
-      setError(err.response?.data?.message || "Failed to load beneficiary data.");
+      if (axios.isAxiosError(err)) {
+        setError((err.response?.data as any)?.message || "Failed to load beneficiary data.");
+      } else {
+        setError("Failed to load beneficiary data.");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [programId, programType]);
 
   useEffect(() => {
     fetchData();
-  }, [programId]);
+  }, [fetchData]);
+
+  const fetchEmploymentHistory = async (userId: number) => {
+    setEmploymentLoading(true);
+    setEmploymentError(null);
+    try {
+      const res = await axios.get<{ history: EmploymentHistoryEntry[] }>(
+        `${API_BASE_URL}/api/beneficiaries/admin/user/${userId}/employment-history`,
+        { headers: getAuthHeaders() }
+      );
+      setEmploymentHistory(Array.isArray(res.data?.history) ? res.data.history : []);
+    } catch (err: unknown) {
+      console.error('Employment history fetch error:', err);
+      if (axios.isAxiosError(err)) {
+        setEmploymentError((err.response?.data as any)?.message || 'Failed to load employment history.');
+      } else {
+        setEmploymentError('Failed to load employment history.');
+      }
+      setEmploymentHistory([]);
+    } finally {
+      setEmploymentLoading(false);
+    }
+  };
+
+  const openDetails = async (person: Enrollee) => {
+    setSelectedBeneficiary(person);
+    setDetailsOpen(true);
+    await fetchEmploymentHistory(person.user_id);
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setSelectedBeneficiary(null);
+    setEmploymentHistory([]);
+    setEmploymentError(null);
+    setEmploymentLoading(false);
+  };
 
   // --- Filter Logic ---
   const filteredEnrollees = enrollees.filter(e => 
@@ -226,7 +300,11 @@ const BeneficiaryManagement = () => {
                       {new Date(person.enrollment_date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                      <button
+                        type="button"
+                        onClick={() => openDetails(person)}
+                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                      >
                         View Details
                       </button>
                     </td>
@@ -244,6 +322,134 @@ const BeneficiaryManagement = () => {
           </table>
         </div>
       </div>
+
+      {/* Employment history modal */}
+      {detailsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={closeDetails}
+          />
+
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Beneficiary Details</h2>
+                <p className="text-sm text-gray-500">
+                  {selectedBeneficiary ? `${selectedBeneficiary.first_name} ${selectedBeneficiary.last_name}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <h3 className="text-sm font-bold text-gray-800 mb-2">Employment History</h3>
+
+                {employmentLoading ? (
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <Loader className="animate-spin" size={18} />
+                    Loading employment history…
+                  </div>
+                ) : employmentError ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertCircle size={18} className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="font-semibold">Failed to load</div>
+                      <div>{employmentError}</div>
+                      {selectedBeneficiary && (
+                        <button
+                          type="button"
+                          onClick={() => fetchEmploymentHistory(selectedBeneficiary.user_id)}
+                          className="mt-2 inline-flex items-center gap-2 text-red-700 font-semibold underline hover:text-red-900"
+                        >
+                          <RefreshCw size={16} />
+                          Retry
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : employmentHistory.length === 0 ? (
+                  <p className="text-sm text-gray-500">No employment-related submissions found for this beneficiary.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {employmentHistory.map((h) => (
+                      <li key={h.application_id} className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {String(h.program_type).toUpperCase().replace('_', ' ')}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Applied: {h.applied_at ? new Date(h.applied_at).toLocaleString() : '—'}
+                          </div>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Application Status</div>
+                            <div className="text-gray-800">{h.application_status || '—'}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Employment Status</div>
+                            <div className="text-gray-800">{h.employment_status || '—'}</div>
+                          </div>
+
+                          {h.tupad && (
+                            <>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Occupation</div>
+                                <div className="text-gray-800">{h.tupad.occupation || '—'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Monthly Income</div>
+                                <div className="text-gray-800">{h.tupad.monthly_income ?? '—'}</div>
+                              </div>
+                            </>
+                          )}
+
+                          {h.job_seekers && (
+                            <>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Years of Experience</div>
+                                <div className="text-gray-800">{h.job_seekers.years_of_experience || '—'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Industry</div>
+                                <div className="text-gray-800">{h.job_seekers.preferred_industry || '—'}</div>
+                              </div>
+                            </>
+                          )}
+
+                          {h.gip && (
+                            <>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Education</div>
+                                <div className="text-gray-800">
+                                  {[h.gip.education_level, h.gip.course, h.gip.school].filter(Boolean).join(' • ') || '—'}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Skills</div>
+                                <div className="text-gray-800">{h.gip.skills || '—'}</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

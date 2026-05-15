@@ -3,11 +3,10 @@ import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
 import { storageGet } from '../../../utils/storage';
 import { type ValidationError, validateTupadForm } from '../../../utils/validation';
+import PersonalInformation from "../../../components/PersonalInformation";
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
 
-// 1. DRY Principle: Extract initial state outside the component so it isn't recreated on every render 
-// and doesn't need to be hardcoded twice.
 const INITIAL_FORM_STATE = {
     first_name: "",
     middle_name: "",
@@ -42,7 +41,6 @@ function calculateAge(dateOfBirth: string): string {
 }
 
 function TupadForm({ programId }: { programId?: number | null }) {
-    // programId is accepted for consistency and future use, but not used currently
     void programId;
     const [formData, setFormData] = useState(() => {
         try {
@@ -57,14 +55,13 @@ function TupadForm({ programId }: { programId?: number | null }) {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<ValidationError[]>([]);
 
-    const fieldError = (field: string) => errors.find(e => e.field === field)?.message;
+   
 
-    // Auto-save draft on every change
     useEffect(() => {
         localStorage.setItem(TUPAD_DRAFT_KEY, JSON.stringify(formData));
     }, [formData]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
 
         setFormData((prev: typeof INITIAL_FORM_STATE) => {
@@ -85,7 +82,6 @@ function TupadForm({ programId }: { programId?: number | null }) {
         e.preventDefault();
         setErrors([]);
 
-        // Validate form
         const validationErrors = validateTupadForm(formData as Record<string, unknown>);
         if (validationErrors.length > 0) {
             setErrors(validationErrors);
@@ -95,12 +91,9 @@ function TupadForm({ programId }: { programId?: number | null }) {
         setLoading(true);
 
         try {
-            // 2. Defensive Programming: Safely retrieve the user ID. 
-            // Often, devs store the whole user object as JSON, not just the ID. We check for both.
             let userId = storageGet('user_id');
 
             if (!userId) {
-                // Fallback: legacy whole-user JSON (if present)
                 const userObjStr = localStorage.getItem('user');
                 if (userObjStr) {
                     try {
@@ -114,7 +107,6 @@ function TupadForm({ programId }: { programId?: number | null }) {
 
             if (!userId) {
                 alert('Session expired or User ID not found. Please log in again.');
-                // Optional: Redirect to login page here using React Router's useNavigate
                 return; 
             }
 
@@ -128,7 +120,6 @@ function TupadForm({ programId }: { programId?: number | null }) {
                 ...formData,
                 user_id: Number(userId),
                 program_type: 'TUPAD',
-                // program_id removed
                 work_category: formData.occupation || null,
             };
 
@@ -139,7 +130,6 @@ function TupadForm({ programId }: { programId?: number | null }) {
             console.log("Response:", response.data);
             alert("Form submitted successfully!");
 
-            // Reset form cleanly using our constant
             localStorage.removeItem(TUPAD_DRAFT_KEY);
             setFormData(INITIAL_FORM_STATE);
             
@@ -174,77 +164,86 @@ function TupadForm({ programId }: { programId?: number | null }) {
                         </div>
                     )}
 
-                    {/* Name Section */}
+                    {/* 
+                        REUSABLE COMPONENT 
+                        This replaces the manual Name, DOB, Age, Gender, Civil Status, and ID sections
+                    */}
+                    <PersonalInformation
+                        mode="edit"
+                        values={formData}
+                        fieldMap={{
+                            firstName: "first_name",
+                            middleName: "middle_name",
+                            lastName: "last_name",
+                            extensionName: undefined,
+                            birthDate: "date_of_birth",
+                            gender: "gender",
+                            civilStatus: "civil_status",
+                            contactNumber: "contact_number",
+                            streetZone: "address",
+                            barangay: "barangay",
+                            province: "province",
+                            city: "city",
+                            district: "district",
+                            zipCode: "zipCode",
+                        }}
+                        onChange={(name, value) => {
+                            setFormData((prev: typeof INITIAL_FORM_STATE) => ({
+                                ...prev,
+                                [name]: value,
+                            }));
+                        }}
+                        errors={(() => {
+                            const map: Record<string, string> = {};
+                            for (const err of errors) map[err.field] = err.message;
+                            return map;
+                        })()}
+                    />
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <input type="text" name="first_name" placeholder="First Name *" value={formData.first_name} onChange={handleChange} className={`${inputStyle} ${fieldError('first_name') ? 'border-red-500' : ''}`} required />
-                            {fieldError('first_name') && <p className="text-red-500 text-xs mt-1">{fieldError('first_name')}</p>}
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Valid ID Type</label>
+                            <select
+                                name="valid_id_type"
+                                value={formData.valid_id_type}
+                                onChange={handleChange}
+                                className={inputStyle}
+                                required
+                            >
+                                <option value="">Select ID Type</option>
+                                <option value="national ID">National ID</option>
+                                <option value="passport">Passport</option>
+                                <option value="GSIS/UMID">GSIS/UMID</option>
+                                <option value="SSS">SSS</option>
+                                <option value="TIN">TIN</option>
+                                <option value="Driver's License">Driver's License</option>
+                                <option value="Other">Other</option>
+                            </select>
                         </div>
-                        <input type="text" name="middle_name" placeholder="Middle Name" value={formData.middle_name} onChange={handleChange} className={inputStyle} />
                         <div>
-                            <input type="text" name="last_name" placeholder="Last Name *" value={formData.last_name} onChange={handleChange} className={`${inputStyle} ${fieldError('last_name') ? 'border-red-500' : ''}`} required />
-                            {fieldError('last_name') && <p className="text-red-500 text-xs mt-1">{fieldError('last_name')}</p>}
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">ID Number</label>
+                            <input
+                                type="text"
+                                name="id_number"
+                                placeholder="Enter ID Number"
+                                value={formData.id_number}
+                                onChange={handleChange}
+                                className={inputStyle}
+                                required
+                            />
                         </div>
                     </div>
 
-                    
-
-                    {/* Personal Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={`${inputStyle} ${fieldError('date_of_birth') ? 'border-red-500' : ''}`} required />
-                            {fieldError('date_of_birth') && <p className="text-red-500 text-xs mt-1">{fieldError('date_of_birth')}</p>}
-                        </div>
-                        <input type="number" name="age" placeholder="Age" value={formData.age} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} />
-                    </div>
-
-                    <div>
-                        <input type="text" name="contact_number" placeholder="Contact Number" value={formData.contact_number} onChange={handleChange} className={`${inputStyle} ${fieldError('contact_number') ? 'border-red-500' : ''}`} />
-                        {fieldError('contact_number') && <p className="text-red-500 text-xs mt-1">{fieldError('contact_number')}</p>}
-                    </div>
-
-                    {/* Address */}
-                    <div>
-                        <input type="text" name="address" placeholder="Complete Address *" value={formData.address} onChange={handleChange} className={`${inputStyle} ${fieldError('address') ? 'border-red-500' : ''}`} required />
-                        {fieldError('address') && <p className="text-red-500 text-xs mt-1">{fieldError('address')}</p>}
-                    </div>
-
-                    {/* Employment */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <input type="text" name="occupation" placeholder="Occupation" value={formData.occupation} onChange={handleChange} className={inputStyle} />
                         <input type="number" name="monthly_income" placeholder="Monthly Income" value={formData.monthly_income} onChange={handleChange} className={inputStyle} />
-                    </div>
-
-                    {/* Identity */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <select name="gender" value={formData.gender} onChange={handleChange as any} className={inputStyle}>
-                            <option value="">Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                        <select name="civil_status" value={formData.civil_status} onChange={handleChange as any} className={inputStyle}>
-                            <option value="">Civil Status</option>
-                            <option value="Single">Single</option>
-                            <option value="Married">Married</option>
-                            <option value="Widowed">Widowed</option>
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <input type="text" name="valid_id_type" placeholder="Type of ID *" value={formData.valid_id_type} onChange={handleChange} className={`${inputStyle} ${fieldError('valid_id_type') ? 'border-red-500' : ''}`} required />
-                            {fieldError('valid_id_type') && <p className="text-red-500 text-xs mt-1">{fieldError('valid_id_type')}</p>}
-                        </div>
-                        <div>
-                            <input type="text" name="id_number" placeholder="ID Number *" value={formData.id_number} onChange={handleChange} className={`${inputStyle} ${fieldError('id_number') ? 'border-red-500' : ''}`} required />
-                            {fieldError('id_number') && <p className="text-red-500 text-xs mt-1">{fieldError('id_number')}</p>}
-                        </div>
                     </div>
 
                     <input type="text" name="name_of_beneficiary" placeholder="Full Name of Beneficiary" value={formData.name_of_beneficiary} onChange={handleChange} className={inputStyle} />
                     <input type="text" name="training" placeholder="Training Attended" value={formData.training} onChange={handleChange} className={inputStyle} />
                     <input type="text" name="educational_attainment" placeholder="Educational Attainment" value={formData.educational_attainment} onChange={handleChange} className={inputStyle} />
                     <input type="text" name="job_preference" placeholder="Job Preference" value={formData.job_preference} onChange={handleChange} className={inputStyle} />
+                    
                     <input type="hidden" name="program_type" value={formData.program_type} />
 
                     <button

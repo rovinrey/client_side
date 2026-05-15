@@ -18,6 +18,23 @@ interface Application {
     applied_at: string;
 }
 
+const getFullAddressFromBeneficiaryAddress = (rawAddress: string | null | undefined) => {
+    const raw = (rawAddress ?? "").trim();
+    if (!raw) return "-";
+
+    // Expected address format (stored so far): "{streetZone}, {barangay}, {city/mun}, {province}"
+    const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+
+    const st_zone = parts[0] ?? "";
+    const barangay = parts[1] ?? "";
+    const city = parts[2] ?? "";
+    const province = parts[3] ?? "";
+
+    const out = [st_zone, barangay, city, province].map((v) => v.trim()).filter((v) => v.length > 0);
+    return out.length ? out.join(" ") : raw;
+};
+
+
 const StaffApplications = () => {
     const navigate = useNavigate();
     const token = storageGet("token");
@@ -184,7 +201,7 @@ const handleUnauthorized = () => {
                                             {app.contact_number}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.address || "-"}
+                                            {getFullAddressFromBeneficiaryAddress(app.address)}
                                         </td>
                                         <td className="px-6 py-4 text-sm">
                                             <span

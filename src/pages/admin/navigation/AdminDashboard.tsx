@@ -100,7 +100,34 @@ const token = storageGet("token");
                 return 'bg-gray-100 text-gray-700';
         }
     };
-    
+    // get the full adress from the application data
+    // Extract Barangay + Municipal + (optionally) Province from the stored address string.
+    // Expected format in this app is usually: "{streetZone}, {barangay}, {city/muncipality}, {province}".
+    // This function is defensive and will return '-' when it cannot parse enough parts.
+    const getBeneficiaryLocation = (app: Application) => {
+        const raw = (app.address ?? "").trim();
+        if (!raw) return "-";
+
+        // Split by comma first (most common)
+        const parts = raw.split(',').map(p => p.trim()).filter(Boolean);
+
+        // Try to find barangay + municipal based on last segments
+        // Typical: [..., barangay, municipal, province?]
+        if (parts.length >= 3) {
+            const barangay = parts[parts.length - 3];
+            const municipal = parts[parts.length - 2];
+            const province = parts[parts.length - 1];
+
+            return province ? `${barangay}, ${municipal}, ${province}` : `${barangay}, ${municipal}`;
+        }
+
+        // Fallback: if address is only "barangay, municipal" or fewer pieces
+        if (parts.length === 2) {
+            return `${parts[0]}, ${parts[1]}`;
+        }
+
+        return raw; // best-effort
+    };
     // approve application
     const handleApprove = async (id: number) => {
         setProcessingId(id);
@@ -210,7 +237,7 @@ const token = storageGet("token");
                             <tbody className="divide-y divide-gray-100">
                                 {recentApps.map((app, idx) => (
                                     <tr
-                                        key={app.id || idx}
+                                        key={`${app.id}-${idx}`}
                                         onClick={() => app.id && handleOpenApplicationDetails(app.id)}
                                         onKeyDown={(event) => {
                                             if ((event.key === 'Enter' || event.key === ' ') && app.id) {
@@ -234,7 +261,7 @@ const token = storageGet("token");
                                             {app.contact_number || '-'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {app.address ?? '-'}
+                                            {getBeneficiaryLocation(app)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {formatDate(app.applied_at)}

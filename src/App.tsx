@@ -28,11 +28,13 @@ import UserManagement from './pages/admin/navigation/UserManagement';
 import Programs from './pages/admin/navigation/Programs';
 import Payment from './pages/admin/navigation/Payment';
 import Reports from './pages/admin/navigation/Reports';
+import TupadAnnexK from './components/TupadAnnexK';
 import AttendancePage from './pages/admin/navigation/Attendance';
 import ApplicationApproval from './pages/admin/navigation/ApplicationApproval';
 import ApplicationDetails from './pages/admin/navigation/ApplicationDetails';
 import DocumentsReview from './pages/admin/navigation/DocumentsReview';
 import ProgramAttendance from './pages/admin/navigation/ProgramAttendance';
+import BeforeAfterLiquidationRoute from './pages/admin/navigation/BeforeAfterLiquidationRoute';
 
 import StaffDashboard from './pages/staff/StaffDashboard';
 import StaffApplications from './pages/staff/StaffApplications';
@@ -135,8 +137,8 @@ function App() {
               <AdminLayout />
             </ProtectedRoute>
           }
-        >
-{/* All these paths will now show the Sidebar */}
+          >
+
           <Route path="/dashboard" element={<AdminDashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/beneficiaries" element={<Beneficiaries />} />
@@ -145,6 +147,8 @@ function App() {
           <Route path="/programs" element={<Programs />} />
           <Route path="/programs/attendance" element={<ProgramAttendance />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/programs/:programId/annex-k" element={<TupadAnnexK />} />
+          <Route path="/before-after/liquidation" element={<BeforeAfterLiquidationRoute />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/applications" element={<ApplicationApproval />} />
           <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
@@ -170,8 +174,10 @@ function App() {
           <Route path="/staff/payment" element={<Payment />} />
           <Route path="/staff/programs" element={<StaffProgramPage />} />
           <Route path="/staff/programs/attendance" element={<ProgramAttendance />} />
+          <Route path="/staff/before-after/liquidation" element={<BeforeAfterLiquidationRoute />} />
           <Route path="/staff/documents-review" element={<DocumentsReview />} />
           <Route path="/staff/reports" element={<Reports />} />
+          <Route path="/staff/programs/:programId/annex-k" element={<TupadAnnexK />} />
           <Route path="/staff/applications" element={<StaffApplications />} />
           <Route path="/staff/applications/:applicationId" element={<StaffApplicationDetails />} />
         </Route>

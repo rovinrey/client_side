@@ -268,7 +268,7 @@ const role = storageGet('role');
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Application Reviews</h1>
                 <p className="text-gray-500 text-sm">
-                    Approve or reject applications; use the Approved tab to see every approved submission (including already enrolled). Enroll is only shown when the beneficiary is not yet actively enrolled in a program run.
+                    Manage Beneficiary application.
                 </p>
             </div>
 

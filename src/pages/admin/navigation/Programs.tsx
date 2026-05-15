@@ -1,20 +1,21 @@
 import { useState, useEffect, useMemo, type JSX } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  Plus, 
-  Calendar, 
-  Users, 
-  ChevronRight, 
-  Briefcase,
-  Hammer,
-  X,
-  Trash2,
-  Pencil,
-  CheckCircle,
-  AlertCircle,
-  FolderOpen,
-  ClipboardCheck,
-  Filter
+import {
+    Plus,
+    Calendar,
+    Users,
+    ChevronRight,
+    Briefcase,
+    Hammer,
+    X,
+    Trash2,
+    Pencil,
+    CheckCircle,
+    AlertCircle,
+    FolderOpen,
+    ClipboardCheck,
+    Filter,
+    Search
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from '../../../api/config';
@@ -40,6 +41,7 @@ const Programs = () => {
     const location = useLocation();
     const [programs, setPrograms] = useState<Program[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
 
     // ── Status filter ──────────────────────────────────────────────────────────
     const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -85,19 +87,21 @@ const Programs = () => {
 
     // view beneficiaries or attendance page with program filter applied
     const handleViewBeneficiaries = (programId: number, programName: string) => {
-    const isStaff = location.pathname.startsWith('/staff');
-    const basePath = isStaff ? '/staff/beneficiaries' : '/beneficiaries';
-    navigate(`${basePath}?program_id=${programId}&program_name=${encodeURIComponent(programName)}`);
+        const isStaff = location.pathname.startsWith('/staff');
+        const basePath = isStaff ? '/staff/beneficiaries' : '/beneficiaries';
+        navigate(`${basePath}?program_id=${programId}&program_name=${encodeURIComponent(programName)}`);
     };
 
-    const handleViewAttendance = (programName: string) => {
+    const handleViewAttendance = (programId: number, programName: string) => {
         const filterValue = getProgramFilterValue(programName);
         const isStaff = location.pathname.startsWith('/staff');
         const basePath = isStaff ? '/staff/programs/attendance' : '/programs/attendance';
-        navigate(`${basePath}?program=${encodeURIComponent(filterValue)}&name=${encodeURIComponent(programName)}`);
+        navigate(`${basePath}?program=${encodeURIComponent(filterValue)}&name=${encodeURIComponent(programName)}&program_id=${programId}`);
     };
 
-const getAuthHeaders = () => {
+    
+
+    const getAuthHeaders = () => {
         const token = storageGet("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
     };
@@ -118,7 +122,7 @@ const getAuthHeaders = () => {
                 status: prog.status,
                 start_date: prog.start_date || null,
                 end_date: prog.end_date || null,
-                icon: prog.program_name.includes('TUPAD') 
+                icon: prog.program_name.includes('TUPAD')
                     ? <Hammer className="text-orange-600" size={20} />
                     : <Briefcase className="text-purple-600" size={20} />
             })));
@@ -129,11 +133,22 @@ const getAuthHeaders = () => {
         }
     };
 
-    // ── Filter programs by selected status ─────────────────────────────────────
+    // ── Filter programs by status + search (program name OR location) ─────
     const filteredPrograms = useMemo(() => {
-        if (statusFilter === "all") return programs;
-        return programs.filter(p => p.status?.toLowerCase() === statusFilter);
-    }, [programs, statusFilter]);
+        const searchLower = searchQuery.trim().toLowerCase();
+
+        return programs.filter(p => {
+            const matchesStatus =
+                statusFilter === "all" || (p.status?.toLowerCase() === statusFilter);
+
+            const matchesSearch =
+                searchLower.length === 0 ||
+                (p.program_name?.toLowerCase().includes(searchLower) ||
+                    p.location?.toLowerCase().includes(searchLower));
+
+            return matchesStatus && matchesSearch;
+        });
+    }, [programs, statusFilter, searchQuery]);
 
     const createProgram = () => {
         setEditingProgram(null);
@@ -255,6 +270,7 @@ const getAuthHeaders = () => {
         }
     };
 
+
     // Label shown under the grid when a filter is active
     const filterLabel: Record<string, string> = {
         ongoing: "Ongoing",
@@ -300,8 +316,23 @@ const getAuthHeaders = () => {
             </div>
 
             {/* ── Active filter badge ─────────────────────────────────────────── */}
-           
+
             {/* ── Program Grid ────────────────────────────────────────────────── */}
+            
+            {/* Search Bar */}
+            <div>
+                <div className="relative">
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search program name or location..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 outline-none focus:border-teal-500 w-100"
+                    />
+                </div>
+            </div>
+            
             {loading ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {[1, 2, 3, 4].map((i) => (
@@ -366,15 +397,14 @@ const getAuthHeaders = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                            prog.status === 'ongoing' || prog.status === 'active'
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${prog.status === 'ongoing' || prog.status === 'active'
                                                 ? 'bg-green-100 text-green-700'
                                                 : prog.status === 'completed'
-                                                ? 'bg-gray-100 text-gray-600'
-                                                : prog.status === 'pending'
-                                                ? 'bg-amber-100 text-amber-700'
-                                                : 'bg-teal-100 text-teal-700'
-                                        }`}>
+                                                    ? 'bg-gray-100 text-gray-600'
+                                                    : prog.status === 'pending'
+                                                        ? 'bg-amber-100 text-amber-700'
+                                                        : 'bg-teal-100 text-teal-700'
+                                            }`}>
                                             {prog.status.charAt(0).toUpperCase() + prog.status.slice(1)}
                                         </span>
                                         <button
@@ -402,9 +432,8 @@ const getAuthHeaders = () => {
                                         </div>
                                         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${
-                                                    remainingSlots === 0 ? 'bg-red-500' : remainingSlots <= 5 ? 'bg-amber-500' : 'bg-teal-500'
-                                                }`}
+                                                className={`h-full rounded-full transition-all duration-500 ${remainingSlots === 0 ? 'bg-red-500' : remainingSlots <= 5 ? 'bg-amber-500' : 'bg-teal-500'
+                                                    }`}
                                                 style={{ width: `${progress}%` }}
                                             />
                                         </div>
@@ -425,20 +454,23 @@ const getAuthHeaders = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-3 justify-between items-center">
                                     <div className="flex items-center gap-2 text-sm text-gray-500">
                                         <Users size={16} />
                                         <span>{filledSlots} {filledSlots === 1 ? 'beneficiary' : 'beneficiaries'} enrolled</span>
                                     </div>
-                                    <div className="flex items-center gap-3">
+
+                                    <div className="flex flex-wrap gap-3 items-center">
                                         <button
-                                            onClick={() => handleViewAttendance(prog.program_name)}
+                                            type="button"
+                                            onClick={() => handleViewAttendance(prog.id, prog.program_name)}
                                             className="text-amber-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
                                         >
                                             Attendance <ClipboardCheck size={16} />
                                         </button>
                                         <button
-                                            onClick={() => handleViewBeneficiaries(prog.id,prog.program_name)}
+                                            type="button"
+                                            onClick={() => handleViewBeneficiaries(prog.id, prog.program_name)}
                                             className="text-teal-600 font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
                                         >
                                             View Beneficiaries <ChevronRight size={16} />
@@ -619,9 +651,8 @@ const getAuthHeaders = () => {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                        submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-teal-600 text-white hover:bg-teal-700'
-                                    }`}
+                                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-teal-600 text-white hover:bg-teal-700'
+                                        }`}
                                 >
                                     {submitting
                                         ? (editingProgram ? 'Updating...' : 'Creating...')
@@ -635,11 +666,10 @@ const getAuthHeaders = () => {
 
             {/* ── Toast Notification ──────────────────────────────────────────── */}
             {toast && (
-                <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
-                    toast.type === 'success'
+                <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.type === 'success'
                         ? 'bg-green-50 text-green-800 border border-green-200'
                         : 'bg-red-50 text-red-800 border border-red-200'
-                }`}>
+                    }`}>
                     {toast.type === 'success'
                         ? <CheckCircle size={18} className="text-green-600" />
                         : <AlertCircle size={18} className="text-red-600" />

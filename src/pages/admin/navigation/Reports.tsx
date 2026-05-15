@@ -9,71 +9,37 @@ const ANNEX_EXCEL_EXPORTS = [
     {
         key: "d",
         label: "Annex D",
-        description: "Approved TUPAD beneficiaries",
+        description: "TUPAD beneficiaries",
         path: "/api/applications/annex-d/export",
         downloadPrefix: "Annex_D_TUPAD",
+        fileType: "xlsx",
     },
     {
         key: "b",
         label: "Annex B",
-        description: "Approved SPES beneficiaries",
+        description: "TUPAD work program",
         path: "/api/applications/annex-b/export",
-        downloadPrefix: "Annex_B_SPES",
+        downloadPrefix: "Annex_B_TUPAD",
+        fileType: "xlsx",
     },
     {
         key: "h",
         label: "Annex H",
-        description: "Approved GIP beneficiaries",
+        description: "TUPAD program appraisal",
         path: "/api/applications/annex-h/export",
-        downloadPrefix: "Annex_H_GIP",
+        downloadPrefix: "Annex_H_TUPAD",
+        fileType: "xlsx",
     },
     {
         key: "l",
         label: "Annex L",
-        description: "Approved job seeker registrations",
+        description: "TUPAD Payroll",
         path: "/api/applications/annex-l/export",
-        downloadPrefix: "Annex_L_JobSeekers",
+        downloadPrefix: "Annex_L_TUPAD",
+        fileType: "xlsx",
     },
+    // Annex K export is handled from the selected TUPAD program page instead of the reports dashboard
 ] as const;
-
-// Static list of all 25 barangays in Juban, Sorsogon
-const JUBAN_BARANGAYS = [
-    "Anog",
-    "Aroroy",
-    "Bacolod",
-    "Binanuahan",
-    "Biriran",
-    "Buraburan",
-    "Calateo",
-    "Calmayon",
-    "Carohayon",
-    "Catanagan",
-    "Catanusan",
-    "Cogon",
-    "Embarcadero",
-    "Guruyan",
-    "Lajong",
-    "Maalo",
-    "North Poblacion",
-    "Puting Sapa",
-    "Rangas",
-    "Sablayan",
-    "Sipaya",
-    "South Poblacion",
-    "Taboc",
-    "Tinago",
-    "Tughan"
-];
-
-// Program types that match what the backend expects (program_type)
-const PROGRAM_TYPES = [
-    { value: "all", label: "All Programs" },
-    { value: "tupad", label: "TUPAD" },
-    { value: "spes", label: "SPES" },
-    { value: "dilp", label: "DILP" },
-    { value: "gip", label: "GIP" },
-    { value: "job_seekers", label: "Job Seekers" },
-];
 
 function Reports() {
     const [loading, setLoading] = useState(true);
@@ -81,10 +47,10 @@ function Reports() {
     const [annexExportKey, setAnnexExportKey] = useState<string | null>(null);
     
     // Use program_type values directly (e.g., "tupad", "spes", "dilp", "all")
-    const [selectedProgram, setSelectedProgram] = useState("all");
+    const [selectedProgram] = useState("all");
     const [timeRange, setTimeRange] = useState("year");
     const [sortOrder, setSortOrder] = useState("asc");
-    const [selectedBarangay, setSelectedBarangay] = useState("all");
+    const [selectedBarangay] = useState("all");
     const [barangayData, setBarangayData] = useState<any>(null);
 
     const [stats, setStats] = useState({
@@ -169,7 +135,7 @@ function Reports() {
         fetchAllData();
     }, [fetchAllData]);
 
-    const handleAnnexExcelDownload = async (item: (typeof ANNEX_EXCEL_EXPORTS)[number]) => {
+    const handleAnnexExportDownload = async (item: (typeof ANNEX_EXCEL_EXPORTS)[number]) => {
         const token = storageGet("token");
         if (!token) {
             alert("Please sign in as admin to download annex files.");
@@ -184,7 +150,7 @@ function Reports() {
             const url = URL.createObjectURL(res.data);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${item.downloadPrefix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            a.download = `${item.downloadPrefix}_${new Date().toISOString().slice(0, 10)}.${item.fileType || 'xlsx'}`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
@@ -218,18 +184,6 @@ function Reports() {
                         <option value="desc">Z-A Sort</option>
                     </select>
 
-{/* Program Type Filter - uses program_type values */}
-                    <select 
-                        value={selectedProgram}
-                        onChange={(e) => setSelectedProgram(e.target.value)}
-                        className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 shadow-sm"
-                    >
-                        {PROGRAM_TYPES.map((prog) => (
-                            <option key={prog.value} value={prog.value}>
-                                {prog.label}
-                            </option>
-                        ))}
-                    </select>
 
                     {/* Time Range Filter */}
                     <select 
@@ -244,34 +198,16 @@ function Reports() {
                         <option value="year">Last Year</option>
                     </select>
 
-                    {/* Barangay Filter */}
-                    <select 
-                        value={selectedBarangay}
-                        onChange={(e) => setSelectedBarangay(e.target.value)}
-                        className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 shadow-sm"
-                    >
-                        <option value="all">All Barangays</option>
-                        {JUBAN_BARANGAYS.map((brgy) => (
-                            <option key={brgy} value={brgy}>
-                                {brgy}
-                            </option>
-                        ))}
-                    </select>
                 </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6 mb-10">
-                <h2 className="text-lg font-bold text-slate-800 mb-1">PESO annex — Excel export</h2>
-                <p className="text-sm text-slate-500 mb-4">
-                    Download formatted registers for approved beneficiaries (admin only). Each file matches the program
-                    annex: D (TUPAD), B (SPES), H (GIP), L (job seekers).
-                </p>
                 <div className="flex flex-wrap gap-3">
                     {ANNEX_EXCEL_EXPORTS.map((item) => (
                         <button
                             key={item.key}
                             type="button"
-                            onClick={() => handleAnnexExcelDownload(item)}
+                            onClick={() => handleAnnexExportDownload(item)}
                             disabled={annexExportKey !== null}
                             className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                         >
