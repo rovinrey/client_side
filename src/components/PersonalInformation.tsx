@@ -53,8 +53,8 @@ function PersonalInformation({
     };
 
     const handleFieldChange =
-        (fieldKey: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-            if (isReadOnly || !onChange) return;
+        (fieldKey?: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+            if (isReadOnly || !onChange || !fieldKey) return;
             onChange(fieldKey, e.target.value);
         };
 
@@ -80,12 +80,19 @@ function PersonalInformation({
                 </div>
                 <div>
                     <label className={labelStyle}>Extension Name</label>
-                    <input type="text" value={fieldMap.extensionName ? get(fieldMap.extensionName) : ""} onChange={fieldMap.extensionName ? handleFieldChange(fieldMap.extensionName) : undefined} placeholder="e.g. Jr., III" disabled={isReadOnly} className={inputStyle} />
+                    <input
+                        type="text"
+                        value={fieldMap.extensionName ? get(fieldMap.extensionName) : ""}
+                        onChange={handleFieldChange(fieldMap.extensionName)}
+                        placeholder="e.g. Jr., III"
+                        disabled={isReadOnly}
+                        className={inputStyle}
+                    />
                 </div>
             </div>
 
             {/* BIRTHDATE & CONTACT SECTION */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                 <div>
                     <label className={labelStyle}>Birthdate (YYYY/MM/DD)</label>
                     <input type="date" value={get(fieldMap.birthDate)} onChange={handleFieldChange(fieldMap.birthDate)} disabled={isReadOnly} className={`${inputStyle} ${errorBorderStyle(fieldMap.birthDate)}`} />
@@ -102,11 +109,21 @@ function PersonalInformation({
                         <option value="Female">Female</option>
                     </select>
                 </div>
+                <div>
+                    <label className={labelStyle}>Civil Status</label>
+                    <select value={get(fieldMap.civilStatus)} onChange={handleFieldChange(fieldMap.civilStatus)} disabled={isReadOnly} className={inputStyle}>
+                        <option value="">Select</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Separated">Separated</option>
+                        <option value="Widowed">Widowed</option>
+                    </select>
+                </div>
             </div>
 
-            {/* PROJECT LOCATION / ADDRESS SECTION */}
+            {/* ADDRESS SECTION */}
             <div className="border-b-2 border-teal-600 pb-2 mt-6">
-                <h3 className="text-lg font-bold text-gray-800">Project Location / Address</h3>
+                <h3 className="text-lg font-bold text-gray-800">Address</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="md:col-span-1">
@@ -128,6 +145,16 @@ function PersonalInformation({
                 <div>
                     <label className={labelStyle}>District</label>
                     <input type="text" value={get(fieldMap.district)} onChange={handleFieldChange(fieldMap.district)} disabled={isReadOnly} className={inputStyle} />
+                </div>
+                <div>
+                    <label className={labelStyle}>Zip Code</label>
+                    <input
+                        type="text"
+                        value={fieldMap.zipCode ? get(fieldMap.zipCode) : ''}
+                        onChange={handleFieldChange(fieldMap.zipCode)}
+                        disabled={isReadOnly}
+                        className={inputStyle}
+                    />
                 </div>
             </div>
         </div>

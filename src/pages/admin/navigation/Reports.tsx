@@ -3,7 +3,6 @@ import axios from "axios";
 import { FileSpreadsheet } from "lucide-react";
 import { API_BASE_URL } from "../../../api/config";
 import { storageGet } from "../../../utils/storage";
-import StatCard from "../../../components/Card";
 
 const ANNEX_EXCEL_EXPORTS = [
     {
@@ -53,12 +52,6 @@ function Reports() {
     const [selectedBarangay] = useState("all");
     const [barangayData, setBarangayData] = useState<any>(null);
 
-    const [stats, setStats] = useState({
-        total_beneficiaries: 0,
-        active_programs: 0,
-        total_distributed: 0,
-        employment_rate: 0,
-    });
 
 // Safe API call using the new summary endpoint
     const safeGet = async (url: string, headers: any, params: Record<string, any> = {}) => {
@@ -90,18 +83,7 @@ function Reports() {
                 timeRange: timeRange
             });
 
-            // Also get other stats for the stat cards
-            const [
-                beneficiaries,
-                programs,
-                accomplishment,
-                payroll,
-            ] = await Promise.all([
-                safeGet(`${API_BASE_URL}/api/beneficiaries/count`, authHeaders),
-                safeGet(`${API_BASE_URL}/api/programs/allPrograms`, authHeaders),
-                safeGet(`${API_BASE_URL}/api/reports/program-accomplishment`, authHeaders),
-                safeGet(`${API_BASE_URL}/api/reports/payroll-summary`, authHeaders),
-            ]);
+         
 
             // Set barangay data from summary response
             const derivedBarangayData = {
@@ -114,14 +96,6 @@ function Reports() {
             };
 
             setBarangayData(derivedBarangayData);
-
-            // Use grand total from summary for Total Beneficiaries, fallback to API count
-            setStats({
-                total_beneficiaries: summaryData?.summary?.grand_total ?? beneficiaries?.count ?? 0,
-                active_programs: Array.isArray(programs) ? programs.length : (accomplishment?.totals?.program_count ?? 0),
-                total_distributed: payroll?.totals?.total_payout ?? 0,
-                employment_rate: accomplishment?.totals?.slot_rate ?? 0,
-            });
 
         } catch (err) {
             console.error("Unexpected error:", err);
@@ -221,34 +195,7 @@ function Reports() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <StatCard
-                    title="Total Beneficiaries"
-                    value={stats.total_beneficiaries.toLocaleString()}
-                    trend="↑"
-                    trendLabel="Overall"
-                />
-                <StatCard
-                    title="Active Programs"
-                    value={stats.active_programs.toString()}
-                    trend="Active"
-                    trendLabel="Programs"
-                />
-                <StatCard
-                    title="Total Distributed"
-                    value={`₱${stats.total_distributed.toLocaleString()}`}
-                    trend="Budget"
-                    trendLabel="Utilized"
-                />
-                <StatCard
-                    title="Employment Rate"
-                    value={`${stats.employment_rate}%`}
-                    trend="↑"
-                    trendLabel="Placement"
-                />
-            </div>
-
-<div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-bold text-slate-700 uppercase tracking-wide">
                         Beneficiaries by Barangay

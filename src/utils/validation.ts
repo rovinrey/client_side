@@ -107,7 +107,9 @@ export const validateDilpForm = (data: Record<string, unknown>): ValidationError
     errors.push({ field: 'proponent_name', message: 'Proponent name is required' });
   if (!isMinLength(String(data.project_title || data.projectTitle || ''), 2))
     errors.push({ field: 'project_title', message: 'Project title is required' });
-  if (!isPositiveNumber(String(data.proposed_amount || data.proposedAmount || '')))
+  if (!isNonEmpty(data.proposed_amount || data.proposedAmount))
+    errors.push({ field: 'proposed_amount', message: 'Requested amount is required' });
+  else if (!isPositiveNumber(String(data.proposed_amount || data.proposedAmount || '')))
     errors.push({ field: 'proposed_amount', message: 'Proposed amount must be a positive number' });
 
   const mobile = String(data.mobile_number || data.mobileNumber || '');
@@ -115,6 +117,32 @@ export const validateDilpForm = (data: Record<string, unknown>): ValidationError
     errors.push({ field: 'mobile_number', message: 'Mobile number is required' });
   else if (!isValidPhone(mobile))
     errors.push({ field: 'mobile_number', message: 'Invalid phone number format' });
+
+  const email = String(data.email || '');
+  if (!isNonEmpty(email))
+    errors.push({ field: 'email', message: 'Email address is required' });
+  else if (!isValidEmail(email))
+    errors.push({ field: 'email', message: 'Email address is invalid' });
+
+  const birthdate = String(data.birthdate || data.birthDate || '');
+  if (!isNonEmpty(birthdate) || !isValidDate(birthdate))
+    errors.push({ field: 'birthdate', message: 'Valid birthdate is required' });
+
+  if (!isNonEmpty(data.province))
+    errors.push({ field: 'province', message: 'Province is required' });
+  if (!isNonEmpty(data.municipality))
+    errors.push({ field: 'municipality', message: 'Municipality is required' });
+  if (!isNonEmpty(data.district))
+    errors.push({ field: 'district', message: 'District is required' });
+  if (!isNonEmpty(data.barangay))
+    errors.push({ field: 'barangay', message: 'Barangay is required' });
+  if (!isNonEmpty(data.street))
+    errors.push({ field: 'street', message: 'Street address is required' });
+
+  if (!isMinLength(String(data.contact_person || data.contactPerson || ''), 2))
+    errors.push({ field: 'contact_person', message: 'Contact person is required' });
+  if (!isNonEmpty(data.valid_id_number || data.validIdNumber))
+    errors.push({ field: 'valid_id_number', message: 'Valid ID number is required' });
 
   const amount = parseFloat(String(data.proposed_amount || data.proposedAmount || '0'));
   if (amount > 10000000)

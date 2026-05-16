@@ -29,7 +29,7 @@ function StaffSidebar() {
     const logout = async () => {
         clearAuth();
         try {
-            await fetch(`${API_BASE}/logout`, { method: 'POST' });
+            await fetch(`${API_BASE}/api/logout`, { method: 'POST' });
         } catch {
             // ignore
         }

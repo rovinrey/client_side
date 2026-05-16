@@ -90,10 +90,11 @@ const DilpForm: React.FC<Props> = ({ programId }) => {
                 return;
             }
 
-            // 1. Validation (The 'type' alias fix now allows this to pass)
+            // 1. Validation
             const validationErrors = validateDilpForm(formData);
             if (validationErrors.length > 0) {
-                throw new Error(validationErrors.join(" | "));
+                const errorMessages = validationErrors.map((error) => error.message).join(' | ');
+                throw new Error(errorMessages);
             }
 
             // 2. Data Transformation (Mapping strings to required numeric types for MySQL)
@@ -116,10 +117,11 @@ const DilpForm: React.FC<Props> = ({ programId }) => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => setStatus(prev => ({ ...prev, success: false })), 6000);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "An error occurred during submission.";
             setStatus({ 
                 loading: false, 
-                error: err.message || "An error occurred during submission.", 
+                error: errorMessage, 
                 success: false 
             });
         }

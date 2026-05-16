@@ -1,47 +1,29 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { AlertCircle, Rocket, Clock, CheckCircle2, Megaphone, Info } from "lucide-react";
+import { AlertCircle, Rocket } from "lucide-react";
 import { API_BASE_URL } from '../../api/config';
 import { storageGet } from '../../utils/storage';
 import { logout } from '../../utils/auth';
 
 import WelcomeBanner from "../../components/Welcomebanner";
-import RequirementsSubmissionModule from "../../components/RequirementsSubmissionModule";
-import { getNotifications, markNotificationAsRead, type Notification } from '../../api/notifications.api';
 import { programsAPI, type ActiveProgram } from '../../api/programs.api';
-import { type ProgramKey } from '../../constants/beneficiaryPrograms';
-
-const PROGRAM_NAME_TO_KEY: Record<string, ProgramKey> = {
-    tupad: 'TUPAD',
-    spes: 'SPES',
-    dilp: 'DILP',
-    gip: 'GIP',
-    job_seekers: 'JOBSEEKERS',
-};
 
 function BeneficiaryDashboard() {
     const navigate = useNavigate();
     const [user, setUser] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [readyPrograms, setReadyPrograms] = useState<ActiveProgram[]>([]);
     const [readyLoading, setReadyLoading] = useState(true);
 
-const fetchNotifications = useCallback(async () => {
-        try {
-            const data = await getNotifications(10);
-            setNotifications(data);
-        } catch (err) {
-            console.error('Failed to load notifications:', err);
-        }
-    }, []);
-
-const fetchReadyPrograms = useCallback(async () => {
+    const fetchReadyPrograms = useCallback(async () => {
         try {
             const programs = await programsAPI.getReadyPrograms();
-            setReadyPrograms(programs);
+            const availablePrograms = programs.filter(
+                (program) => (program.slots - (program.filled || 0)) > 0
+            );
+            setReadyPrograms(availablePrograms);
         } catch (err) {
             console.error('Failed to load ready programs:', err);
         } finally {
@@ -79,9 +61,8 @@ useEffect(() => {
         };
 
         fetchDashboardData();
-        fetchNotifications();
         fetchReadyPrograms();
-    }, [navigate, fetchNotifications, fetchReadyPrograms]);
+    }, [navigate, fetchReadyPrograms]);
 
     if (loading) {
         return (
@@ -108,7 +89,8 @@ useEffect(() => {
                         >
                             Retry
                         </button>
-<button
+
+                        <button
                             onClick={() => { logout(); navigate('/login'); }}
                             className="text-sm text-gray-500 hover:text-teal-600 font-medium"
                         >
@@ -120,38 +102,7 @@ useEffect(() => {
         );
     }
 
-    const handleMarkRead = async (id: number) => {
-        try {
-            await markNotificationAsRead(id);
-            setNotifications((prev) =>
-                prev.map((n) => (n.notification_id === id ? { ...n, is_read: 1 } : n))
-            );
-        } catch {
-            // silent
-        }
-    };
-
-    const handleNotificationClick = async (notif: Notification) => {
-        if (!notif.is_read) handleMarkRead(notif.notification_id);
-
-        if (notif.program_name) {
-            const programKey = PROGRAM_NAME_TO_KEY[notif.program_name.toLowerCase()];
-            if (programKey) {
-                navigate('/beneficiary/application', { state: { program: programKey } });
-                return;
-            }
-        }
-    };
-
-    const typeConfig: Record<string, { icon: typeof Rocket; color: string; bg: string; label: string }> = {
-        program_available: { icon: Rocket, color: 'text-green-600', bg: 'bg-green-50', label: 'Open for Applications' },
-        program_ongoing: { icon: Megaphone, color: 'text-blue-600', bg: 'bg-blue-50', label: 'Ongoing' },
-        program_coming_soon: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', label: 'Coming Soon' },
-        program_completed: { icon: CheckCircle2, color: 'text-gray-500', bg: 'bg-gray-50', label: 'Completed' },
-        program_ready: { icon: Rocket, color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Ready to Apply' },
-        general: { icon: Info, color: 'text-teal-600', bg: 'bg-teal-50', label: 'Announcement' },
-    };
-
+   
     return (
         <div className="w-full">
             {/* Welcome Banner */}
@@ -210,60 +161,7 @@ useEffect(() => {
                         </div>
                     </div>
                 )}
-
-                {/* Program Announcements */}
-                {notifications.length > 0 && (
-                    <div className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl shadow-sm border border-gray-200">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">Program Announcements</h2>
-                        <div className="space-y-3">
-                            {notifications.map((notif) => {
-                                const config = typeConfig[notif.type] || typeConfig.general;
-                                const Icon = config.icon;
-                                return (
-                                    <div
-                                        key={notif.notification_id}
-                                        onClick={() => handleNotificationClick(notif)}
-                                        className={`flex gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
-                                            notif.is_read
-                                                ? 'border-gray-100 bg-white hover:bg-gray-50'
-                                                : 'border-teal-200 bg-teal-50/30 hover:bg-teal-50/50'
-                                        }`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center flex-shrink-0`}>
-                                            <Icon size={18} className={config.color} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <h3 className={`text-sm leading-snug ${notif.is_read ? 'text-gray-700' : 'text-gray-900 font-semibold'}`}>
-                                                    {notif.title}
-                                                </h3>
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap ${config.bg} ${config.color}`}>
-                                                    {config.label}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{notif.message}</p>
-                                            <p className="text-[11px] text-gray-400 mt-1.5">
-                                                {new Date(notif.created_at).toLocaleDateString('en-US', {
-                                                    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-                                                })}
-                                            </p>
-                                        </div>
-                                        {!notif.is_read && (
-                                            <span className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0 mt-2" />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-                
-                {/* Requirements Submission */}
-                <div className="bg-white p-4 sm:p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Requirements Submission Progress</h2>
-                    <RequirementsSubmissionModule compact />
-                </div>
-                
+        
             </main>
         </div>
     );

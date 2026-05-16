@@ -5,7 +5,9 @@ import PesoLogo from "../components/PesoLogo";
 import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../api/config";
 
-const NAME_REGEX = /^[a-zA-Z\s.\-']+$/;
+const NAME_REGEX = /^[A-Za-z]+(?:[ '\-\.][A-Za-z]+)+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^\+?[\d\s()-]{7,20}$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 function SignupPage() {
@@ -38,8 +40,24 @@ function SignupPage() {
             return "Please fill in all fields.";
         }
 
-        if (trimmedName.length < 2 || trimmedName.length > 100) {
-            return "Full name must be between 2 and 100 characters.";
+        if (trimmedName.length < 2 || trimmedName.length > 50) {
+            return "Full name must be between 2 and 50 characters.";
+        }
+
+        if (trimmedIdentifier.includes('@')) {
+            if (!EMAIL_REGEX.test(trimmedIdentifier)) {
+                return "Please provide a valid email address.";
+            }
+        } else {
+            const digitsOnly = trimmedIdentifier.replace(/\D/g, '');
+            if (!PHONE_REGEX.test(trimmedIdentifier) || digitsOnly.length < 7 || digitsOnly.length > 15) {
+                return "Please provide a valid phone number.";
+            }
+        }
+
+        const nameParts = trimmedName.split(/\s+/).filter(Boolean);
+        if (nameParts.length < 2) {
+            return "Please enter your full name (first and last name).";
         }
 
         if (!NAME_REGEX.test(trimmedName)) {

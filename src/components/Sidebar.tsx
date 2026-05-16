@@ -32,7 +32,7 @@ function Sidebar() {
 
         // optionally hit backend for audit or cookie clearance
         try {
-            await fetch(`${API_BASE_URL}/logout`, { method: 'POST' });
+            await fetch(`${API_BASE_URL}/api/logout`, { method: 'POST' });
         } catch {
             // ignore network errors, user is logging out anyway
         }

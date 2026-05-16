@@ -7,7 +7,33 @@ import PersonalInformation from "../../../components/PersonalInformation";
 
 const TUPAD_DRAFT_KEY = 'tupad_form_draft_v1';
 
-const INITIAL_FORM_STATE = {
+type TupadFormData = {
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    date_of_birth: string;
+    valid_id_type: string;
+    id_number: string;
+    contact_number: string;
+    occupation: string;
+    monthly_income: string;
+    gender: string;
+    civil_status: string;
+    age: string;
+    training: string;
+    educational_attainment: string;
+    job_preference: string;
+    name_of_beneficiary: string;
+    address: string;
+    barangay: string;
+    city: string;
+    province: string;
+    district: string;
+    zipCode: string;
+    program_type: string;
+};
+
+const INITIAL_FORM_STATE: TupadFormData = {
     first_name: "",
     middle_name: "",
     last_name: "",
@@ -25,6 +51,11 @@ const INITIAL_FORM_STATE = {
     job_preference: "",
     name_of_beneficiary: "",
     address: "",
+    barangay: "",
+    city: "",
+    province: "",
+    district: "",
+    zipCode: "",
     program_type: "TUPAD",
 };
 
@@ -62,13 +93,13 @@ function TupadForm({ programId }: { programId?: number | null }) {
     }, [formData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
+        const { name, value } = e.target;
 
-        setFormData((prev: typeof INITIAL_FORM_STATE) => {
+        setFormData((prev: TupadFormData) => {
             const updated = {
                 ...prev,
-                [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
-            };
+                [name]: value,
+            } as TupadFormData;
 
             if (name === "date_of_birth") {
                 updated.age = calculateAge(value);
@@ -99,7 +130,7 @@ function TupadForm({ programId }: { programId?: number | null }) {
                     try {
                         const parsedUser = JSON.parse(userObjStr);
                         userId = parsedUser?.id || parsedUser?.user_id;
-                    } catch (parseError) {
+                    } catch {
                         console.error("Failed to parse user from local storage");
                     }
                 }
@@ -133,9 +164,9 @@ function TupadForm({ programId }: { programId?: number | null }) {
             localStorage.removeItem(TUPAD_DRAFT_KEY);
             setFormData(INITIAL_FORM_STATE);
             
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Submission error:", err);
-            const errorMessage = err.response?.data?.message || err.message || "Internal Server Error";
+            const errorMessage = err instanceof Error ? err.message : "Internal Server Error";
             alert(`Submission failed: ${errorMessage}`);
         } finally {
             setLoading(false);
