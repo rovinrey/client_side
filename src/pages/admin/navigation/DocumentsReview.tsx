@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, Download, Eye, Search, Filter, Loader, FileDown, Trash2, RefreshCw, Printer } from "lucide-react";
+import { FileText, Download, Eye, Search, Filter, Loader, Trash2, RefreshCw, Printer } from "lucide-react";
 import adminDocumentsApi, { type SpesDocumentRecord } from "../../../api/adminDocuments.api";
 import { API_BASE_URL } from '../../../api/config';
 import { storageGet } from '../../../utils/storage';
@@ -84,9 +84,6 @@ export default function DocumentsReview() {
     // Filters
     const [programFilter, setProgramFilter] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
-
-    // Export state
-    const [exportingUserId, setExportingUserId] = useState<number | null>(null);
 
     // Document preview
     const [previewDoc, setPreviewDoc] = useState<UnifiedDocument | null>(null);
@@ -194,32 +191,10 @@ export default function DocumentsReview() {
 
     // Group by user for export buttons (generic-only since Word export is for generic docs)
     const genericDocs = filteredDocs.filter((d) => d.kind === "generic");
-    const userIds = [...new Set(genericDocs.map((d) => d.user_id))];
     const usersMap = new Map<number, string>();
     genericDocs.forEach((d) => usersMap.set(d.user_id, d.user_name));
 
-    /* ── Handlers ── */
-
-    const handleExportWord = async (userId: number) => {
-        setExportingUserId(userId);
-        try {
-            const blob = await adminDocumentsApi.exportToWord(token, userId);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            const userName = usersMap.get(userId) || "User";
-            const safeName = userName.replace(/[^a-zA-Z0-9_\- ]/g, "").trim().replace(/\s+/g, "_");
-            a.download = `Document_Report_${safeName}_${new Date().toISOString().slice(0, 10)}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-        } catch {
-            alert("Failed to export documents to Word");
-        } finally {
-            setExportingUserId(null);
-        }
-    };
+   
 
     const getDocUrl = (doc: UnifiedDocument) => {
         if (doc.kind === "spes") return `${API_BASE_URL}${doc.url}`;
@@ -370,31 +345,6 @@ export default function DocumentsReview() {
                     </select>
                 </div>
             </div>
-
-            {/* Export Section - grouped by user */}
-            {userIds.length > 0 && (
-                <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4">
-                    <h3 className="text-sm font-semibold text-teal-900 mb-3 flex items-center gap-2">
-                        <FileDown size={16} />
-                        Export Documents to Word (for DOLE submission)
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {userIds.map((uid) => (
-                            <button
-                                key={uid}
-                                onClick={() => handleExportWord(uid)}
-                                disabled={exportingUserId === uid}
-                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-teal-200 rounded-lg text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors disabled:opacity-50"
-                            >
-                                <Download size={14} />
-                                {exportingUserId === uid
-                                    ? "Exporting..."
-                                    : `${usersMap.get(uid) || "User #" + uid}`}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Loading */}
             {loading && (

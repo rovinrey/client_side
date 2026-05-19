@@ -8,7 +8,6 @@ import {
     Briefcase,
     Hammer,
     X,
-    Trash2,
     Pencil,
     CheckCircle,
     AlertCircle,
@@ -36,6 +35,29 @@ interface Program {
     icon?: JSX.Element;
 }
 
+const getStatusBasedOnDates = (startDate: string | null, endDate: string | null, currentStatus: string): string => {
+    if (!startDate) return currentStatus;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    // If end date exists and has passed, status is 'completed'
+    if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (today > end) return 'completed';
+    }
+
+    // If start date has passed but end date hasn't, status is 'start'
+    if (today >= start) return 'start';
+
+    // Otherwise, return current status
+    return currentStatus;
+};
+
 const Programs = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -48,10 +70,6 @@ const Programs = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProgram, setEditingProgram] = useState<Program | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; programId: number | null }>({
-        show: false,
-        programId: null
-    });
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [formData, setFormData] = useState({
@@ -138,8 +156,9 @@ const Programs = () => {
         const searchLower = searchQuery.trim().toLowerCase();
 
         return programs.filter(p => {
+            const actualStatus = getStatusBasedOnDates(p.start_date, p.end_date, p.status);
             const matchesStatus =
-                statusFilter === "all" || (p.status?.toLowerCase() === statusFilter);
+                statusFilter === "all" || (actualStatus?.toLowerCase() === statusFilter);
 
             const matchesSearch =
                 searchLower.length === 0 ||
@@ -246,34 +265,12 @@ const Programs = () => {
         }
     };
 
-    const openDeleteConfirm = (programId: number) => {
-        setDeleteConfirm({ show: true, programId });
-    };
-
-    const closeDeleteConfirm = () => {
-        setDeleteConfirm({ show: false, programId: null });
-    };
-
-    const confirmDelete = async () => {
-        if (deleteConfirm.programId !== null) {
-            try {
-                await axios.delete(`${API_BASE_URL}/api/programs/${deleteConfirm.programId}`, {
-                    headers: getAuthHeaders(),
-                });
-                closeDeleteConfirm();
-                fetchPrograms();
-                setToast({ message: "Program deleted successfully!", type: "success" });
-            } catch (error) {
-                console.error("Error deleting program:", error);
-                setToast({ message: "Failed to delete program.", type: "error" });
-            }
-        }
-    };
 
 
     // Label shown under the grid when a filter is active
     const filterLabel: Record<string, string> = {
         ongoing: "Ongoing",
+        start: "Started",
         active: "Active",
         pending: "Pending",
         completed: "Completed",
@@ -299,6 +296,7 @@ const Programs = () => {
                         >
                             <option value="all">All Status</option>
                             <option value="ongoing">Ongoing</option>
+                            <option value="start">Started</option>
                             <option value="active">Active</option>
                             <option value="pending">Pending</option>
                             <option value="completed">Completed</option>
@@ -397,29 +395,27 @@ const Programs = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${prog.status === 'ongoing' || prog.status === 'active'
-                                                ? 'bg-green-100 text-green-700'
-                                                : prog.status === 'completed'
-                                                    ? 'bg-gray-100 text-gray-600'
-                                                    : prog.status === 'pending'
-                                                        ? 'bg-amber-100 text-amber-700'
-                                                        : 'bg-teal-100 text-teal-700'
-                                            }`}>
-                                            {prog.status.charAt(0).toUpperCase() + prog.status.slice(1)}
-                                        </span>
+                                        {(() => {
+                                            const actualStatus = getStatusBasedOnDates(prog.start_date, prog.end_date, prog.status);
+                                            return (
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${actualStatus === 'ongoing' || actualStatus === 'active' || actualStatus === 'start'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : actualStatus === 'completed'
+                                                            ? 'bg-gray-100 text-gray-600'
+                                                            : actualStatus === 'pending'
+                                                                ? 'bg-amber-100 text-amber-700'
+                                                                : 'bg-teal-100 text-teal-700'
+                                                    }`}>
+                                                    {actualStatus.charAt(0).toUpperCase() + actualStatus.slice(1)}
+                                                </span>
+                                            );
+                                        })()}
                                         <button
                                             onClick={() => openEditModal(prog)}
                                             className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
                                             title="Edit Program"
                                         >
                                             <Pencil size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => openDeleteConfirm(prog.id)}
-                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                                            title="Delete Program"
-                                        >
-                                            <Trash2 size={18} />
                                         </button>
                                     </div>
                                 </div>
@@ -501,37 +497,6 @@ const Programs = () => {
                             <p className="text-gray-500 text-sm">Create your first program to get started.</p>
                         </>
                     )}
-                </div>
-            )}
-
-            {/* ── Delete Confirmation Modal ────────────────────────────────────── */}
-            {deleteConfirm.show && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-                        <div className="p-6 text-center">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Trash2 className="text-red-600" size={32} />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Program?</h3>
-                            <p className="text-gray-600 text-sm mb-6">
-                                Are you sure you want to delete this program? This action cannot be undone.
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={closeDeleteConfirm}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={confirmDelete}
-                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             )}
 

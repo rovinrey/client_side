@@ -14,12 +14,13 @@ function TupadAnnexK() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
   const [periodOfWork, setPeriodOfWork] = useState('');
+  const [workDay, setWorkDay] = useState('Day 1');
+  const [reportDate, setReportDate] = useState('');
   const [detailOfWork, setDetailOfWork] = useState('');
   const [beforePhoto, setBeforePhoto] = useState<File | null>(null);
   const [duringPhoto, setDuringPhoto] = useState<File | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<File | null>(null);
   const [reportId, setReportId] = useState<number | null>(null);
-  const [workDays, setWorkDays] = useState('Day 1 - 10');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -91,8 +92,20 @@ function TupadAnnexK() {
       setErrorMessage('Please select a TUPAD program.');
       return;
     }
+    if (!reportDate.trim()) {
+      setErrorMessage('Report date is required.');
+      return;
+    }
+    if (!workDay.trim()) {
+      setErrorMessage('Work day is required.');
+      return;
+    }
     if (!periodOfWork.trim() || !detailOfWork.trim()) {
       setErrorMessage('Period of work and detail of work are required.');
+      return;
+    }
+    if (!beforePhoto || !duringPhoto || !afterPhoto) {
+      setErrorMessage('Before, during, and after photos are required for every daily report.');
       return;
     }
 
@@ -104,7 +117,9 @@ function TupadAnnexK() {
         `${API_BASE_URL}/api/applications/tupad-reports`,
         {
           program_id: selectedProgramId,
-          period_of_work: `${periodOfWork.trim()} ${workDays ? `(${workDays})` : ''}`.trim(),
+          report_date: reportDate,
+          work_day: workDay,
+          period_of_work: periodOfWork.trim(),
           detail_of_work: detailOfWork,
         },
         { headers: tokenHeaders }
@@ -216,29 +231,6 @@ function TupadAnnexK() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Period of Work</label>
-            <textarea
-              rows={2}
-              value={periodOfWork}
-              onChange={(e) => setPeriodOfWork(e.target.value)}
-              className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-teal-500 focus:ring-teal-500"
-              placeholder="e.g. July 1, 2025 - July 15, 2025"
-            />
-            <p className="mt-2 text-xs text-slate-500">Include the work day range here; most reports use <strong>Day 1 - 10</strong> for the first period.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Work Day Range</label>
-            <input
-              type="text"
-              value={workDays}
-              onChange={(e) => setWorkDays(e.target.value)}
-              className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-teal-500 focus:ring-teal-500"
-              placeholder="Day 1 - 10"
-            />
-          </div>
-
-          <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Detail of Work</label>
             <textarea
               rows={4}
@@ -249,34 +241,148 @@ function TupadAnnexK() {
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Before Work Photo</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setBeforePhoto(e.target.files?.[0] ?? null)}
-                className="w-full text-sm text-slate-600 file:rounded-xl file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-emerald-900"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">During Work Photo</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setDuringPhoto(e.target.files?.[0] ?? null)}
-                className="w-full text-sm text-slate-600 file:rounded-xl file:border-0 file:bg-amber-50 file:px-4 file:py-2 file:text-amber-900"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">After Work Photo</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setAfterPhoto(e.target.files?.[0] ?? null)}
-                className="w-full text-sm text-slate-600 file:rounded-xl file:border-0 file:bg-sky-50 file:px-4 file:py-2 file:text-sky-900"
-              />
-            </div>
+          {/* Work Report Table */}
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">Date / Period</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">Before</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">During</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-slate-700">After</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-slate-200 hover:bg-slate-50">
+                  <td className="px-6 py-6">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-2">Period of Work</label>
+                        <textarea
+                          rows={2}
+                          value={periodOfWork}
+                          onChange={(e) => setPeriodOfWork(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:ring-teal-500"
+                          placeholder="e.g. July 1, 2025 - July 15, 2025"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-2">Work Day</label>
+                        <input
+                          type="text"
+                          value={workDay}
+                          onChange={(e) => setWorkDay(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:ring-teal-500"
+                          placeholder="Day 1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-2">Report Date</label>
+                        <input
+                          type="date"
+                          value={reportDate}
+                          onChange={(e) => setReportDate(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:ring-teal-500"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className="flex flex-col items-center gap-2">
+                      {beforePhoto ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={URL.createObjectURL(beforePhoto)} alt="Before" className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setBeforePhoto(null)}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="relative cursor-pointer">
+                          <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                            <UploadCloud size={24} className="text-emerald-600" />
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setBeforePhoto(e.target.files?.[0] ?? null)}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                      <span className="text-xs text-slate-500 text-center font-medium">Before</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className="flex flex-col items-center gap-2">
+                      {duringPhoto ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={URL.createObjectURL(duringPhoto)} alt="During" className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDuringPhoto(null)}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="relative cursor-pointer">
+                          <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 hover:border-amber-400 bg-amber-50 hover:bg-amber-100 flex items-center justify-center transition-colors">
+                            <UploadCloud size={24} className="text-amber-600" />
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setDuringPhoto(e.target.files?.[0] ?? null)}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                      <span className="text-xs text-slate-500 text-center font-medium">During</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className="flex flex-col items-center gap-2">
+                      {afterPhoto ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={URL.createObjectURL(afterPhoto)} alt="After" className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAfterPhoto(null)}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="relative cursor-pointer">
+                          <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 hover:border-sky-400 bg-sky-50 hover:bg-sky-100 flex items-center justify-center transition-colors">
+                            <UploadCloud size={24} className="text-sky-600" />
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setAfterPhoto(e.target.files?.[0] ?? null)}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                      <span className="text-xs text-slate-500 text-center font-medium">After</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -303,7 +409,7 @@ function TupadAnnexK() {
 
           {!reportId && (
             <div className="rounded-3xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-900">
-              Save the report first before exporting Annex K. Photo uploads are optional but recommended.
+              Save the report first before exporting Annex K. All three photos are required for each daily report.
             </div>
           )}
         </div>

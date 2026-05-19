@@ -15,8 +15,8 @@ const ANNEX_EXCEL_EXPORTS = [
     },
     {
         key: "b",
-        label: "Annex B",
-        description: "TUPAD work program",
+        label: "Annex D",
+        description: "SPES beneficiaries",
         path: "/api/applications/annex-b/export",
         downloadPrefix: "Annex_B_TUPAD",
         fileType: "xlsx",

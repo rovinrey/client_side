@@ -30,11 +30,30 @@ export const programsAPI = {
   getReadyPrograms: async (): Promise<ActiveProgram[]> => {
     const token = storageGet('token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const response = await axios.get<ActiveProgram[]>(
-      `${API_URL}/ready`,
-      { headers }
-    );
-    return response.data;
+    
+    try {
+      // Try to get ready programs from the dedicated endpoint
+      const response = await axios.get<ActiveProgram[]>(
+        `${API_URL}/ready`,
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      // If /ready endpoint doesn't exist (404), fall back to allPrograms
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.warn('Ready programs endpoint not available, falling back to all programs');
+        const response = await axios.get<ActiveProgram[]>(
+          `${API_URL}/allPrograms`,
+          { headers }
+        );
+        return response.data.filter(p => 
+          (p.status === 'active' || p.status === 'ongoing') && 
+          ((p.slots - (p.filled || 0)) > 0)
+        );
+      }
+      // Re-throw any other errors
+      throw error;
+    }
   },
 };
 
